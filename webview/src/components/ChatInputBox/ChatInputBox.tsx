@@ -14,7 +14,8 @@ import type {
   ChatInputBoxProps,
   PermissionMode,
 } from './types.js';
-import { DEFAULT_CLAUDE_MODEL_ID } from './types.js';
+import { DEFAULT_CLAUDE_MODEL_ID, DROID_MODE_IDS } from './types.js';
+import { useCachedCliModels } from '../../hooks/providers/useCliModels';
 import { ChatInputBoxHeader } from './ChatInputBoxHeader.js';
 import { ChatInputBoxFooter } from './ChatInputBoxFooter.js';
 import { ResizeHandles } from './ResizeHandles.js';
@@ -521,6 +522,20 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
       return () => document.removeEventListener('ideaSend', handler);
     }, [handleSubmit, isLoading]);
 
+    // Droid models can declare noImageSupport; gate every image entry point.
+    const droidModels = useCachedCliModels('droid');
+    const imagesDisabled = currentProvider === 'droid'
+      && droidModels.find((model) => model.id === selectedModel)?.noImageSupport === true;
+    const imagesDisabledReason = imagesDisabled
+      ? t('droid.imagesNotSupported', { defaultValue: 'The current model does not support images' })
+      : undefined;
+    const handleImageRejected = useCallback(() => {
+      addToast?.(
+        t('droid.imagesNotSupported', { defaultValue: 'The current model does not support images' }),
+        'warning',
+      );
+    }, [addToast, t]);
+
     // Paste and drop hook
     const { handlePaste, handleDragOver, handleDrop } = usePasteAndDrop({
       editableRef,
@@ -536,7 +551,46 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
       flushInput: () => {
         debouncedOnInput.flush();
       },
+      imagesDisabled,
+      onImageRejected: handleImageRejected,
     });
+
+    // Shift+Tab cycles Droid modes like the Droid CLI (Spec → Auto Off → … → Auto High).
+    const handleEditableKeyDown = useCallback(
+      (e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (
+          currentProvider === 'droid'
+          && e.key === 'Tab'
+          && e.shiftKey
+          && !e.altKey && !e.ctrlKey && !e.metaKey
+          && !isComposingRef.current
+          && !fileCompletion.isOpen
+          && !commandCompletion.isOpen
+          && !agentCompletion.isOpen
+          && !promptCompletion.isOpen
+          && !dollarCommandCompletion.isOpen
+        ) {
+          e.preventDefault();
+          const index = DROID_MODE_IDS.indexOf(permissionMode);
+          const next = DROID_MODE_IDS[(index + 1) % DROID_MODE_IDS.length];
+          onModeSelect?.(next);
+          return;
+        }
+        handleKeyDown(e);
+      },
+      [
+        currentProvider,
+        permissionMode,
+        onModeSelect,
+        handleKeyDown,
+        isComposingRef,
+        fileCompletion.isOpen,
+        commandCompletion.isOpen,
+        agentCompletion.isOpen,
+        promptCompletion.isOpen,
+        dollarCommandCompletion.isOpen,
+      ]
+    );
 
     /**
      * Handle mode select
@@ -626,6 +680,8 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
           onDismissOpenSourceBanner={handleDismissOpenSourceBanner}
           autoOpenFileEnabled={autoOpenFileEnabled}
           onRequestEnableFileContext={handleRequestEnableFileContext}
+          attachDisabled={imagesDisabled}
+          attachDisabledReason={imagesDisabledReason}
         />
 
         {/* Input area */}
@@ -647,7 +703,7 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
               // sole source of truth for IME state.
               handleInput();
             }}
-            onKeyDown={handleKeyDown}
+            onKeyDown={handleEditableKeyDown}
             onKeyUp={handleKeyUp}
             onBeforeInput={(e) => {
               const inputType =

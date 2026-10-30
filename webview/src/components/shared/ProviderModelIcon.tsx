@@ -158,6 +158,28 @@ const ZcodeIcon = (size: number, colored: boolean): ReactElement => (
 );
 
 /**
+ * Droid badge — simple "D" letterform drawn for this project in Factory's
+ * orange; mono follows currentColor, colored is white-on-brand.
+ */
+const DROID_BRAND_COLOR = '#EE6018';
+const DROID_D_PATH = 'M18 14h14c11.6 0 19 7.4 19 18s-7.4 18-19 18H18zM26 22v20h6c6.4 0 11-4 11-10s-4.6-10-11-10z';
+const DroidIcon = (size: number, colored: boolean): ReactElement => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 64 64"
+    width={size}
+    height={size}
+    aria-label="Droid"
+    role="img"
+    style={{ flex: 'none', display: 'block' }}
+  >
+    <title>Droid</title>
+    {colored && <rect width={64} height={64} rx={14} fill={DROID_BRAND_COLOR} />}
+    <path fill={colored ? '#fff' : 'currentColor'} fillRule="evenodd" d={DROID_D_PATH} />
+  </svg>
+);
+
+/**
  * Icon renderers for each vendor.
  * Returns [coloredVersion, avatarVersion] JSX elements.
  */
@@ -198,6 +220,9 @@ const VENDOR_ICON_MAP: Record<
   // resolve to the zhipu brand via the pattern rules, not this entry.
   zcode: (size, colored) =>
     ZcodeIcon(size, colored),
+  // Original badge above; Droid catalog model ids still resolve to their vendor.
+  droid: (size, colored) =>
+    DroidIcon(size, colored),
   xiaomi: (size, colored) =>
     XiaomiMiMoIcon(size, colored),
   doubao: (size, colored) =>

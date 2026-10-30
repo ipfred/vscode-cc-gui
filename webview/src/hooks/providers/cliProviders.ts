@@ -1,7 +1,12 @@
 import type { ModelInfo, PermissionMode } from '../../components/ChatInputBox/types';
+import { isDroidPermissionMode } from '../../components/ChatInputBox/types';
 
-/** Headless CLI providers that share Grok-style marker streaming (no npm SDK). */
-export const CLI_ONLY_PROVIDERS = new Set(['grok', 'kimi', 'opencode', 'pi', 'omp', 'dsh', 'minimax', 'zcode']);
+/**
+ * Headless CLI providers that share Grok-style marker streaming. Droid does use
+ * an npm SDK (@factory/droid-sdk), but the backend reports SDK_NOT_INSTALLED
+ * itself, so the webview does not gate sends on SDK status for it either.
+ */
+export const CLI_ONLY_PROVIDERS = new Set(['grok', 'kimi', 'opencode', 'pi', 'omp', 'dsh', 'minimax', 'zcode', 'droid']);
 
 export function isCliOnlyProvider(providerId: string | null | undefined): boolean {
   return !!providerId && CLI_ONLY_PROVIDERS.has(providerId);
@@ -30,6 +35,11 @@ export function ompModeForModelId(modelId: string, roles: ModelInfo[]): Permissi
  * (or default for OMP), while OMP preserves model-role ids (default / smol / slow / plan).
  */
 export function normalizeCliPermissionMode(mode: PermissionMode, provider?: string | null): PermissionMode {
+  if (provider === 'droid') {
+    // Droid exposes all five modes (Spec = plan, Auto Off/Low/Medium/High).
+    const canonical = mode === 'autoEdit' ? 'acceptEdits' : mode;
+    return isDroidPermissionMode(canonical) ? canonical : 'default';
+  }
   if (provider === 'omp') {
     return mode === 'auto' || mode === 'autoEdit' ? 'default' : mode;
   }

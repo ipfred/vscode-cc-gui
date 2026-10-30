@@ -63,7 +63,7 @@ const ProviderTabSection = ({
   const [activeTab, setActiveTab] = useState<ProviderManageTab>(() => {
     if (initialSubTab) return initialSubTab;
     if (currentProvider === 'codex') return 'codex';
-    // Grok / Kimi / OpenCode / PI / OMP / DSH / MiniMax / ZCode share the CLI management surface.
+    // Grok / Kimi / OpenCode / PI / OMP / DSH / MiniMax / ZCode / Droid share the CLI management surface.
     if (
       currentProvider === 'grok'
       || currentProvider === 'kimi'
@@ -73,6 +73,7 @@ const ProviderTabSection = ({
       || currentProvider === 'omp'
       || currentProvider === 'dsh'
       || currentProvider === 'zcode'
+      || currentProvider === 'droid'
     ) {
       return 'cli';
     }

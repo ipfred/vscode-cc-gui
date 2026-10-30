@@ -37,6 +37,7 @@ export function providerForCommand(command: string): string | undefined {
   if (/\bomp\b/.test(command)) return 'omp';
   if (/\bzcode\b/i.test(command)) return 'zcode';
   if (/\bminimax\b/i.test(command) || /\bmcode\b/i.test(command)) return 'minimax';
+  if (/\bdroid\b/i.test(command)) return 'droid';
   return undefined;
 }
 

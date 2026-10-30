@@ -54,9 +54,15 @@
   color: var(--text-primary);
 }
 
-.context-tool-btn:disabled {
+.context-tool-btn:disabled,
+.context-tool-btn.disabled {
   cursor: not-allowed;
   opacity: 0.4;
+}
+
+.context-tool-btn.disabled:hover {
+  background: transparent;
+  color: var(--text-secondary);
 }
 
 .context-tool-divider {

@@ -418,8 +418,8 @@ const App = () => {
         addToast(t('chat.planModeEnabled', { defaultValue: 'Plan mode enabled' }), 'info');
         return;
       }
-      // /context - handled locally even while loading
-      if (CONTEXT_COMMANDS.has(command)) {
+      // /context - handled locally even while loading (Droid runs it in the daemon)
+      if (CONTEXT_COMMANDS.has(command) && currentProvider !== 'droid') {
         hookHandleSubmit(content, attachments);
         return;
       }

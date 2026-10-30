@@ -22,6 +22,7 @@ vi.mock('react-i18next', () => ({
         'providers.dsh.label': 'DeepSeek Harness',
         'providers.minimax.label': 'MiniMax Code',
         'providers.zcode.label': 'ZCode',
+        'providers.droid.label': 'Droid',
         'providers.beta.badge': 'Beta',
         'providers.beta.title': 'Beta Feature',
         'providers.beta.message':
@@ -45,14 +46,14 @@ describe('ProviderSelect Beta badge and first-click notice', () => {
     window.updateCodexSubscriptionQuota = undefined;
   });
 
-  it('renders Beta badges on Grok, Kimi, OpenCode, PI, OMP, DSH, MiniMax and ZCode', () => {
+  it('renders Beta badges on Grok, Kimi, OpenCode, PI, OMP, DSH, MiniMax, ZCode and Droid', () => {
     render(<ProviderSelect value="claude" />);
     fireEvent.click(screen.getByRole('button'));
 
     const badges = screen.getAllByText('Beta');
-    expect(badges).toHaveLength(8);
+    expect(badges).toHaveLength(9);
 
-    for (const id of ['grok', 'kimi', 'opencode', 'pi', 'omp', 'dsh', 'minimax', 'zcode']) {
+    for (const id of ['grok', 'kimi', 'opencode', 'pi', 'omp', 'dsh', 'minimax', 'zcode', 'droid']) {
       const row = document.querySelector(`[data-provider-id="${id}"]`);
       expect(row?.querySelector('.provider-beta-badge')).toBeTruthy();
     }

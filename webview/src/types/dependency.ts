@@ -4,6 +4,7 @@
  * SDK dependency installation path: ~/.codemoss/dependencies/
  * - claude-sdk: Claude SDK (@anthropic-ai/claude-agent-sdk and its dependencies)
  * - codex-sdk: Codex SDK (@openai/codex-sdk)
+ * - droid-sdk: Droid SDK (@factory/droid-sdk)
  *
  * Supported operations:
  * - Install/uninstall SDKs
@@ -14,7 +15,7 @@
 /**
  * SDK ID type
  */
-export type SdkId = 'claude-sdk' | 'codex-sdk';
+export type SdkId = 'claude-sdk' | 'codex-sdk' | 'droid-sdk';
 
 /**
  * SDK installation status
@@ -177,5 +178,11 @@ export const SDK_DEFINITIONS: SdkDefinition[] = [
     name: 'Codex SDK',
     description: 'Codex AI 提供商所需。包含 @openai/codex-sdk。',
     relatedProviders: ['openai'],
+  },
+  {
+    id: 'droid-sdk',
+    name: 'Droid SDK',
+    description: 'Droid AI 提供商所需。包含 @factory/droid-sdk。',
+    relatedProviders: ['droid'],
   },
 ];

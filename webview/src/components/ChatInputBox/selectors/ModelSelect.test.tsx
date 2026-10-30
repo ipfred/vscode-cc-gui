@@ -1,13 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ModelSelect } from './ModelSelect';
-import { CLAUDE_MODELS, CODEX_MODELS } from '../types';
+import { CLAUDE_MODELS, CODEX_MODELS, formatDroidMultiplier } from '../types';
 import type { ModelInfo } from '../types';
 import { STORAGE_KEYS } from '../../../types/provider';
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: Record<string, string>) => options?.model ?? key,
+    t: (key: string, options?: Record<string, string>) => options?.model ?? options?.defaultValue ?? key,
   }),
 }));
 
@@ -236,6 +236,86 @@ describe('ModelSelect', () => {
     expect(screen.queryByTestId('model-group-other')).toBeNull();
     expect(screen.queryByTestId('model-group-deepseek')).toBeNull();
     expect(screen.getByTestId('model-option-deepseek/deepseek-flash')).toBeTruthy();
+  });
+
+  describe('Droid catalog', () => {
+    const droidCatalog: ModelInfo[] = [
+      { id: 'gpt-6-luna', label: 'GPT-6 Luna', group: 'OpenAI', multiplier: 0.04, supportedReasoningEfforts: ['low', 'high'] },
+      { id: 'my-byok', label: 'My BYOK', group: 'BYOK', multiplier: null, isCustom: true },
+      { id: 'claude-opus-5-5', label: 'Opus 5.5', group: 'Anthropic', multiplier: 1.6, description: '1.6× Factory token rate · reasoning low–max' },
+      { id: 'auto-router', label: 'Auto', group: 'Auto', multiplier: 1 },
+      { id: 'grok-5', label: 'Grok 5', group: 'xAI', multiplier: 12, disabled: true, disabledReason: 'Requires Max plan' },
+    ];
+
+    it('formats multiplier badges with trimmed zeros and at most three decimals', () => {
+      expect(formatDroidMultiplier(1.6)).toBe('1.6×');
+      expect(formatDroidMultiplier(0.04)).toBe('0.04×');
+      expect(formatDroidMultiplier(12)).toBe('12×');
+      expect(formatDroidMultiplier(1.0)).toBe('1×');
+      expect(formatDroidMultiplier(0.33333)).toBe('0.333×');
+      expect(formatDroidMultiplier(null)).toBe('');
+    });
+
+    it('groups rows by vendor in the fixed Droid order and renders rate badges', () => {
+      render(
+        <ModelSelect value="claude-opus-5-5" onChange={vi.fn()} models={droidCatalog} currentProvider="droid" />,
+      );
+      fireEvent.click(screen.getByRole('button'));
+
+      const groups = Array.from(document.querySelectorAll('[data-testid^="model-group-"]'))
+        .map((el) => el.getAttribute('data-testid')!.replace('model-group-', ''));
+      expect(groups).toEqual(['Auto', 'Anthropic', 'OpenAI', 'xAI', 'BYOK']);
+
+      expect(screen.getByTestId('model-rate-claude-opus-5-5').textContent).toBe('1.6×');
+      expect(screen.getByTestId('model-rate-gpt-6-luna').textContent).toBe('0.04×');
+      expect(screen.getByTestId('model-rate-grok-5').textContent).toBe('12×');
+      // BYOK rows show the BYOK badge instead of a multiplier.
+      expect(screen.getByTestId('model-rate-my-byok').textContent).toBe('BYOK');
+      // Built description when the payload has none.
+      expect(screen.getByTestId('model-option-gpt-6-luna').textContent).toContain('reasoning low–high');
+    });
+
+    it('shows the active rate on the trigger', () => {
+      render(
+        <ModelSelect value="claude-opus-5-5" onChange={vi.fn()} models={droidCatalog} currentProvider="droid" />,
+      );
+      expect(screen.getByRole('button').textContent).toContain('Opus 5.5 · 1.6×');
+    });
+
+    it('greys out disabled models, shows the reason and ignores clicks', () => {
+      const onChange = vi.fn();
+      render(
+        <ModelSelect value="claude-opus-5-5" onChange={onChange} models={droidCatalog} currentProvider="droid" />,
+      );
+      fireEvent.click(screen.getByRole('button'));
+
+      const disabledRow = screen.getByTestId('model-option-grok-5');
+      expect(disabledRow.getAttribute('aria-disabled')).toBe('true');
+      expect(disabledRow.className).toContain('disabled');
+      expect(disabledRow.textContent).toContain('Requires Max plan');
+      fireEvent.click(disabledRow);
+      expect(onChange).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByTestId('model-option-gpt-6-luna'));
+      expect(onChange).toHaveBeenCalledWith('gpt-6-luna');
+    });
+
+    it('offers a manual refresh row only for Droid', () => {
+      const onRefresh = vi.fn();
+      const { unmount } = render(
+        <ModelSelect value="claude-opus-5-5" onChange={vi.fn()} models={droidCatalog} currentProvider="droid" onRefresh={onRefresh} />,
+      );
+      fireEvent.click(screen.getByRole('button'));
+      fireEvent.click(screen.getByTestId('model-refresh'));
+      expect(onRefresh).toHaveBeenCalledTimes(1);
+      unmount();
+
+      render(
+        <ModelSelect value="auto" onChange={vi.fn()} models={[{ id: 'auto', label: 'OMP Auto' }]} currentProvider="omp" onRefresh={onRefresh} />,
+      );
+      fireEvent.click(screen.getByRole('button'));
+      expect(screen.queryByTestId('model-refresh')).toBeNull();
+    });
   });
 
   it('选中值不在列表中（如 OMP 角色）时触发器应显示原值而非回退到第一项', () => {

@@ -365,7 +365,9 @@
       "uninstallSuccess": "{{name}}がアンインストールされました",
       "uninstallFailed": "アンインストール失敗: {{error}}",
       "updating": "更新中...",
-      "updateSuccess": "{{name}}が正常に更新されました"
+      "updateSuccess": "{{name}}が正常に更新されました",
+      "droidSdkName": "Droid SDK",
+      "droidSdkDescription": "Droid プロバイダーに必要です。@factory/droid-sdk を含みます。"
     },
     "usage": "使用統計",
     "usageDesc": "トークン消費量、コスト統計、使用傾向分析を表示",
@@ -837,6 +839,10 @@
         "zcode": {
           "name": "ZCode",
           "description": "GLM モデルを搭載した Zhipu ZCode デスクトップコーディングアプリ"
+        },
+        "droid": {
+          "name": "Droid",
+          "description": "Factory Droid ターミナルコーディングエージェント（Droid SDK 経由）"
         }
       },
       "installDialog": {
@@ -858,6 +864,17 @@
       "visibility": {
         "hide": "プロバイダー切り替えメニューに表示しない",
         "show": "プロバイダー切り替えメニューに表示する"
+      },
+      "droidSdk": {
+        "title": "Droid SDK",
+        "hint": "Droid との対話に必要です（@factory/droid-sdk ≥ {{version}}）",
+        "belowMinimum": "インストール済みのバージョンが必要な {{version}} より古いため、更新してください",
+        "checking": "確認中…",
+        "install": "SDK をインストール",
+        "update": "SDK を更新",
+        "installing": "インストール中…",
+        "installSuccess": "Droid SDK をインストールしました",
+        "installFailed": "Droid SDK のインストールに失敗しました: {{error}}"
       }
     }
   },
@@ -1692,6 +1709,9 @@
     },
     "zcode": {
       "label": "ZCode"
+    },
+    "droid": {
+      "label": "Droid"
     }
   },
   "promptEnhancer": {
@@ -1753,6 +1773,18 @@
     "xhigh": {
       "label": "最大",
       "description": "最大の推論深度"
+    },
+    "none": {
+      "label": "なし",
+      "description": "拡張推論なし"
+    },
+    "off": {
+      "label": "オフ",
+      "description": "推論を無効化"
+    },
+    "minimal": {
+      "label": "最小",
+      "description": "最小限の推論で最速の応答"
     }
   },
   "errorBoundary": {
@@ -1857,5 +1889,37 @@
         }
       }
     }
+  },
+  "droidModes": {
+    "spec": {
+      "label": "Spec",
+      "description": "まず計画。仕様を承認するまで読み取り専用"
+    },
+    "autoOff": {
+      "label": "Auto（オフ）",
+      "description": "すべてのファイル編集とコマンドを承認"
+    },
+    "autoLow": {
+      "label": "Auto（低）",
+      "description": "ファイル編集と読み取り専用コマンドを自動実行"
+    },
+    "autoMedium": {
+      "label": "Auto（中）",
+      "description": "元に戻せるコマンドを自動実行"
+    },
+    "autoHigh": {
+      "label": "Auto（高）",
+      "description": "すべてのコマンドを自動実行［注意して使用］"
+    }
+  },
+  "droid": {
+    "modelSwitched": "モデルを {{model}}（{{multiplier}}）に切り替えました",
+    "modelSwitchedNoRate": "モデルを {{model}} に切り替えました",
+    "byok": "BYOK",
+    "modelDisabled": "利用不可",
+    "refreshModels": "モデルを更新",
+    "imagesNotSupported": "現在のモデルは画像に対応していません",
+    "tokenRate": "{{multiplier}} Factory トークン倍率",
+    "reasoningRange": "推論 {{range}}"
   }
 }

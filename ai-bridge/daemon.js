@@ -30,6 +30,7 @@ import { handleClaudeCommand } from './channels/claude-channel.js';
 import { handleCodexCommand } from './channels/codex-channel.js';
 import { handleGrokCommand } from './channels/grok-channel.js';
 import { handleZcodeCommand } from './channels/zcode-channel.js';
+import { handleDroidCommand } from './channels/droid-channel.js';
 import { handleKimiCommand } from './channels/kimi-channel.js';
 import { handleOpenCodeCommand } from './channels/opencode-channel.js';
 import { handlePiCommand } from './channels/pi-channel.js';
@@ -70,6 +71,16 @@ import {
   getContextUsagePersistent as zcodeGetContextUsagePersistent,
   getUsagePersistent as zcodeGetUsagePersistent
 } from './services/zcode/persistent-zcode-service.js';
+import {
+  sendMessagePersistent as droidSendPersistent,
+  preconnectPersistent as droidPreconnectPersistent,
+  resetRuntimePersistent as droidResetRuntimePersistent,
+  abortCurrentTurn as droidAbortCurrentTurn,
+  shutdownPersistentRuntimes as droidShutdownPersistentRuntimes,
+  setPermissionModePersistent as droidSetPermissionModePersistent,
+  setModelPersistent as droidSetModelPersistent,
+  getRuntimeSnapshot as droidGetRuntimeSnapshot
+} from './services/droid/persistent-droid-service.js';
 import { isWebviewControlledEnvVar, isDangerousEnvVar } from './config/api-config.js';
 import { cleanupStaleTempImages } from './services/claude/attachment-service.js';
 import { requestContext, getRequestId } from './utils/request-context.js';
@@ -443,6 +454,7 @@ async function processRequest(request) {
       runtimes: {
         claude: getClaudeRuntimeSnapshot(),
         grok: getGrokRuntimeSnapshot(),
+        droid: droidGetRuntimeSnapshot(),
       },
     });
     return;
@@ -461,6 +473,7 @@ async function processRequest(request) {
       runtimes: {
         claude: getClaudeRuntimeSnapshot(),
         grok: getGrokRuntimeSnapshot(),
+        droid: droidGetRuntimeSnapshot(),
       },
     });
     return;
@@ -473,6 +486,7 @@ async function processRequest(request) {
       _originalStderrWrite(`[daemon] Failed to shutdown Grok persistent runtimes: ${e.message}\n`, 'utf8');
     });
     await zcodeShutdownPersistentRuntimes().catch(() => {});
+    await droidShutdownPersistentRuntimes().catch(() => {});
     sendDaemonEvent('shutdown', { reason: 'requested' });
     writeRawLine({ id: id || '0', done: true, success: true });
     isDaemonMode = false;
@@ -561,6 +575,17 @@ async function processRequest(request) {
           await zcodeGetContextUsagePersistent(stdinData);
         } else if (provider === 'zcode' && command === 'getUsage') {
           await zcodeGetUsagePersistent(stdinData);
+        } else if (provider === 'droid' && command === 'send') {
+          await droidSendPersistent(stdinData);
+        } else if (provider === 'droid' && command === 'preconnect') {
+          await droidPreconnectPersistent(stdinData);
+        } else if (provider === 'droid' && command === 'resetRuntime') {
+          await droidResetRuntimePersistent(stdinData);
+        } else if (provider === 'droid' && command === 'setModel') {
+          await droidSetModelPersistent(stdinData);
+        } else if (provider === 'droid') {
+          // Daemon keeps Droid runtimes warm across commands (persistent mode).
+          await handleDroidCommand(command, [], stdinData, { persistent: true });
         } else {
           // Dispatch to the existing handlers for non-send commands + CLI providers.
           switch (provider) {
@@ -727,13 +752,16 @@ async function processRequest(request) {
       || (claude.sessionRuntimeCount || 0) > 0
       || !!claude.activeTurnEpoch;
     const grokBusy = (grok.runtimeCount || 0) > 0 || (grok.activeTurnCount || 0) > 0;
-    if (claudeBusy || grokBusy) return;
+    const droid = droidGetRuntimeSnapshot();
+    const droidBusy = (droid.runtimeCount || 0) > 0 || (droid.activeTurnCount || 0) > 0;
+    if (claudeBusy || grokBusy || droidBusy) return;
 
     idleShutdownInFlight = true;
     const shutdownGeneration = ++idleShutdownGeneration;
     try {
       await shutdownPersistentRuntimes();
       await grokShutdownPersistentRuntimes().catch(() => {});
+      await droidShutdownPersistentRuntimes().catch(() => {});
       // A command may have arrived while provider shutdown was awaiting an
       // SDK/client close. In that case the command wins: its runtime will be
       // recreated lazily and the daemon must stay alive to service it.
@@ -871,6 +899,13 @@ async function processRequest(request) {
           'utf8'
         );
       });
+      // Droid SDK sessions: interrupt only the turns owned by the targeted requests.
+      droidAbortCurrentTurn(hasScopedTargets ? targetRequestIds : undefined).catch((e) => {
+        _originalStderrWrite(
+          `[daemon] Droid abort error: ${e.message}\n`,
+          'utf8'
+        );
+      });
       writeRawLine({ id: request.id || '0', done: true, success: true });
       pendingCommandCount = Math.max(0, pendingCommandCount - 1);
       return;
@@ -935,6 +970,20 @@ async function processRequest(request) {
       return;
     }
 
+    // Droid live mode switch: autonomy / Spec must reach the session before its
+    // next tool call, so it bypasses the request queue like Claude/Grok/ZCode.
+    if (request.method === 'droid.setPermissionMode') {
+      const switchId = request.id || '0';
+      droidSetPermissionModePersistent(request.params || {})
+        .then(() => writeRawLine({ id: switchId, done: true, success: true }))
+        .catch((e) => {
+          _originalStderrWrite(`[daemon] droid.setPermissionMode error: ${e.message}\n`, 'utf8');
+          writeRawLine({ id: switchId, done: true, success: false, error: e.message || String(e) });
+        })
+        .finally(() => { pendingCommandCount = Math.max(0, pendingCommandCount - 1); });
+      return;
+    }
+
     // Parallel command execution (multi-window)
     processRequest(request)
       .catch((e) => {
@@ -965,6 +1014,7 @@ async function processRequest(request) {
       await shutdownPersistentRuntimes();
       await grokShutdownPersistentRuntimes();
       await zcodeShutdownPersistentRuntimes();
+      await droidShutdownPersistentRuntimes();
     } catch (e) {
       _originalStderrWrite(`[daemon] Failed to shutdown persistent runtimes: ${e.message}\n`, 'utf8');
     }

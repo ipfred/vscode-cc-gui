@@ -33,6 +33,39 @@ const CODEX_BUILTIN_COMMANDS: SlashCommand[] = [
   { name: '/review', description: 'Review working tree changes', source: 'builtin' },
 ];
 
+/**
+ * Droid builtins. /new and /clear are handled by the webview; the rest map to
+ * SDK calls in the daemon (`droid.command`) instead of being sent as prompt text.
+ */
+export const DROID_BUILTIN_COMMANDS: SlashCommand[] = [
+  { name: '/compact', description: 'Summarize the conversation into a new session to free context', source: 'builtin' },
+  { name: '/context', description: 'Show context window usage', source: 'builtin' },
+  { name: '/spec', description: 'Switch to Spec mode: plan before changing code (/spec <task>)', source: 'builtin' },
+  { name: '/model', description: 'List models with their Factory token rate, or switch with /model <id>', source: 'builtin' },
+  { name: '/new', description: 'Start a new session', source: 'builtin' },
+  { name: '/clear', description: 'Start a new session', source: 'builtin' },
+  { name: '/fork', description: 'Fork this conversation into a new session', source: 'builtin' },
+  { name: '/rewind', description: 'Rewind to before an earlier message and restore files (/rewind <n>)', source: 'builtin' },
+  { name: '/mcp', description: 'List MCP servers', source: 'builtin' },
+  { name: '/skills', description: 'List installed skills', source: 'builtin' },
+];
+
+const DROID_DAEMON_COMMANDS = new Set(['/compact', '/context', '/spec', '/model', '/fork', '/rewind', '/mcp', '/skills']);
+
+/**
+ * Split a Droid builtin slash command into the daemon command + arguments.
+ * Returns null for prompt text, custom commands and skills (the CLI expands
+ * those natively).
+ */
+export function parseDroidBuiltinCommand(text: string): { command: string; args: string } | null {
+  const trimmed = (text || '').trim();
+  if (!trimmed.startsWith('/')) return null;
+  const spaceIdx = trimmed.search(/\s/);
+  const name = (spaceIdx === -1 ? trimmed : trimmed.slice(0, spaceIdx)).toLowerCase();
+  if (!DROID_DAEMON_COMMANDS.has(name)) return null;
+  return { command: name.slice(1), args: spaceIdx === -1 ? '' : trimmed.slice(spaceIdx + 1).trim() };
+}
+
 const CLAUDE_CLI_BUILTINS = new Set([
   ...CLAUDE_BUILTIN_COMMANDS.map((command) => command.name),
   '/bug',
@@ -57,10 +90,22 @@ const MAX_CODEX_REPO_SCAN_LEVELS = 3;
 export class SlashCommandService {
   constructor(
     private readonly getWorkspacePath: () => string,
-    private readonly getActiveProvider: () => 'claude' | 'codex',
+    private readonly getActiveProvider: () => string,
     private readonly log: vscode.OutputChannel,
     private readonly isCodexLocalConfigAuthorized: () => boolean = () => false,
   ) {}
+
+  /** Custom commands + skills reported by the Droid CLI (refreshed asynchronously). */
+  private droidDynamicCommands: SlashCommand[] = [];
+
+  /** Store the CLI-reported list and return the full Droid command list. */
+  setDroidDynamicCommands(commands: unknown): SlashCommand[] {
+    const rows = Array.isArray(commands) ? commands : [];
+    this.droidDynamicCommands = rows
+      .filter((row): row is SlashCommand => !!row && typeof row === 'object' && typeof (row as SlashCommand).name === 'string')
+      .map((row) => ({ name: row.name, description: String(row.description ?? ''), source: String(row.source ?? 'droid') }));
+    return this.mergeCommands(DROID_BUILTIN_COMMANDS, this.droidDynamicCommands);
+  }
 
   refresh(webview: vscode.Webview): void {
     const provider = this.getActiveProvider();
@@ -109,7 +154,10 @@ export class SlashCommandService {
     return null;
   }
 
-  private getCommands(provider: 'claude' | 'codex', cwd: string, currentFilePath: string): SlashCommand[] {
+  private getCommands(provider: string, cwd: string, currentFilePath: string): SlashCommand[] {
+    if (provider === 'droid') {
+      return this.mergeCommands(DROID_BUILTIN_COMMANDS, this.droidDynamicCommands);
+    }
     if (provider === 'codex') {
       return this.mergeCommands(
         CODEX_BUILTIN_COMMANDS,

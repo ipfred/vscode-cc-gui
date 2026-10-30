@@ -365,7 +365,9 @@
       "uninstallSuccess": "{{name}} अनइंस्टॉल हो गया",
       "uninstallFailed": "अनइंस्टॉल विफल: {{error}}",
       "updating": "अपडेट हो रहा है...",
-      "updateSuccess": "{{name}} सफलतापूर्वक अपडेट हो गया"
+      "updateSuccess": "{{name}} सफलतापूर्वक अपडेट हो गया",
+      "droidSdkName": "Droid SDK",
+      "droidSdkDescription": "Droid प्रदाता के लिए आवश्यक। इसमें @factory/droid-sdk शामिल है।"
     },
     "usage": "उपयोग सांख्यिकी",
     "usageDesc": "अपनी Token खपत, लागत सांख्यिकी और उपयोग प्रवृत्ति विश्लेषण देखें",
@@ -832,6 +834,10 @@
         "zcode": {
           "name": "ZCode",
           "description": "GLM मॉडल के साथ Zhipu ZCode डेस्कटॉप कोडिंग ऐप"
+        },
+        "droid": {
+          "name": "Droid",
+          "description": "Factory Droid टर्मिनल कोडिंग एजेंट, Droid SDK के माध्यम से संचालित"
         }
       },
       "installDialog": {
@@ -853,6 +859,17 @@
       "visibility": {
         "hide": "प्रदाता स्विचर में छिपाएँ",
         "show": "प्रदाता स्विचर में दिखाएँ"
+      },
+      "droidSdk": {
+        "title": "Droid SDK",
+        "hint": "Droid से चैट करने के लिए आवश्यक (@factory/droid-sdk ≥ {{version}})",
+        "belowMinimum": "इंस्टॉल किया गया संस्करण आवश्यक {{version}} से कम है; कृपया अपडेट करें",
+        "checking": "जाँच हो रही है…",
+        "install": "SDK इंस्टॉल करें",
+        "update": "SDK अपडेट करें",
+        "installing": "इंस्टॉल हो रहा है…",
+        "installSuccess": "Droid SDK इंस्टॉल हो गया",
+        "installFailed": "Droid SDK इंस्टॉल विफल: {{error}}"
       }
     }
   },
@@ -1686,6 +1703,9 @@
     },
     "zcode": {
       "label": "ZCode"
+    },
+    "droid": {
+      "label": "Droid"
     }
   },
   "promptEnhancer": {
@@ -1747,6 +1767,18 @@
     "xhigh": {
       "label": "अधिकतम",
       "description": "अधिकतम तर्क गहराई"
+    },
+    "none": {
+      "label": "कोई नहीं",
+      "description": "कोई विस्तारित तर्क नहीं"
+    },
+    "off": {
+      "label": "बंद",
+      "description": "तर्क अक्षम"
+    },
+    "minimal": {
+      "label": "न्यूनतम",
+      "description": "सबसे तेज़ उत्तरों के लिए न्यूनतम तर्क"
     }
   },
   "errorBoundary": {
@@ -1851,5 +1883,37 @@
         }
       }
     }
+  },
+  "droidModes": {
+    "spec": {
+      "label": "Spec",
+      "description": "पहले योजना; स्पेक स्वीकृत होने तक केवल-पढ़ने योग्य"
+    },
+    "autoOff": {
+      "label": "Auto (बंद)",
+      "description": "हर फ़ाइल संपादन और कमांड को स्वीकृत करें"
+    },
+    "autoLow": {
+      "label": "Auto (निम्न)",
+      "description": "फ़ाइल संपादन और केवल-पढ़ने वाले कमांड स्वतः चलते हैं"
+    },
+    "autoMedium": {
+      "label": "Auto (मध्यम)",
+      "description": "पलटे जा सकने वाले कमांड स्वतः चलते हैं"
+    },
+    "autoHigh": {
+      "label": "Auto (उच्च)",
+      "description": "सभी कमांड स्वतः चलते हैं [सावधानी से उपयोग करें]"
+    }
+  },
+  "droid": {
+    "modelSwitched": "मॉडल {{model}} ({{multiplier}}) पर बदला गया",
+    "modelSwitchedNoRate": "मॉडल {{model}} पर बदला गया",
+    "byok": "BYOK",
+    "modelDisabled": "उपलब्ध नहीं",
+    "refreshModels": "मॉडल रीफ़्रेश करें",
+    "imagesNotSupported": "वर्तमान मॉडल छवियों का समर्थन नहीं करता",
+    "tokenRate": "{{multiplier}} Factory टोकन दर",
+    "reasoningRange": "तर्क {{range}}"
   }
 }

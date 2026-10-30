@@ -451,7 +451,9 @@
       "uninstallSuccess": "{{name}} has been uninstalled",
       "uninstallFailed": "Uninstall failed: {{error}}",
       "updating": "Updating...",
-      "updateSuccess": "{{name}} updated successfully"
+      "updateSuccess": "{{name}} updated successfully",
+      "droidSdkName": "Droid SDK",
+      "droidSdkDescription": "Required for the Droid provider. Includes @factory/droid-sdk."
     },
     "usage": "Usage Statistics",
     "usageDesc": "View your Token consumption, cost statistics and usage trend analysis",
@@ -1036,6 +1038,10 @@
         "zcode": {
           "name": "ZCode",
           "description": "Zhipu ZCode desktop coding app with GLM models"
+        },
+        "droid": {
+          "name": "Droid",
+          "description": "Factory Droid terminal coding agent, driven through the Droid SDK"
         }
       },
       "installDialog": {
@@ -1074,6 +1080,17 @@
       "visibility": {
         "hide": "Hide in provider switcher",
         "show": "Show in provider switcher"
+      },
+      "droidSdk": {
+        "title": "Droid SDK",
+        "hint": "Required to chat with Droid (@factory/droid-sdk ≥ {{version}})",
+        "belowMinimum": "Installed version is below the required {{version}}; please update",
+        "checking": "Checking…",
+        "install": "Install SDK",
+        "update": "Update SDK",
+        "installing": "Installing…",
+        "installSuccess": "Droid SDK installed",
+        "installFailed": "Droid SDK installation failed: {{error}}"
       }
     }
   },
@@ -2023,6 +2040,9 @@
     },
     "zcode": {
       "label": "ZCode"
+    },
+    "droid": {
+      "label": "Droid"
     }
   },
   "promptEnhancer": {
@@ -2122,6 +2142,18 @@
     "max": {
       "label": "Max",
       "description": "Maximum reasoning depth"
+    },
+    "none": {
+      "label": "None",
+      "description": "No extended reasoning"
+    },
+    "off": {
+      "label": "Off",
+      "description": "Reasoning disabled"
+    },
+    "minimal": {
+      "label": "Minimal",
+      "description": "Minimal reasoning for the fastest responses"
     }
   },
   "errorBoundary": {
@@ -2267,5 +2299,37 @@
     "user": {
       "description": "Custom preset installed under the DSH home"
     }
+  },
+  "droidModes": {
+    "spec": {
+      "label": "Spec",
+      "description": "Plan first; read-only until you approve the spec"
+    },
+    "autoOff": {
+      "label": "Auto (Off)",
+      "description": "Approve every file edit and command"
+    },
+    "autoLow": {
+      "label": "Auto (Low)",
+      "description": "File edits and read-only commands run automatically"
+    },
+    "autoMedium": {
+      "label": "Auto (Medium)",
+      "description": "Reversible commands run automatically"
+    },
+    "autoHigh": {
+      "label": "Auto (High)",
+      "description": "All commands run automatically [use with caution]"
+    }
+  },
+  "droid": {
+    "modelSwitched": "Model switched to {{model}} ({{multiplier}})",
+    "modelSwitchedNoRate": "Model switched to {{model}}",
+    "byok": "BYOK",
+    "modelDisabled": "Unavailable",
+    "refreshModels": "Refresh models",
+    "imagesNotSupported": "The current model does not support images",
+    "tokenRate": "{{multiplier}} Factory token rate",
+    "reasoningRange": "reasoning {{range}}"
   }
 }

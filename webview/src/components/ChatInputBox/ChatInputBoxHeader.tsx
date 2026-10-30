@@ -33,6 +33,8 @@ export function ChatInputBoxHeader({
   onDismissOpenSourceBanner,
   autoOpenFileEnabled,
   onRequestEnableFileContext,
+  attachDisabled,
+  attachDisabledReason,
 }: {
   sdkInstalled: boolean;
   sdkStatusLoading: boolean;
@@ -61,6 +63,8 @@ export function ChatInputBoxHeader({
   onDismissOpenSourceBanner?: () => void;
   autoOpenFileEnabled?: boolean;
   onRequestEnableFileContext?: () => void;
+  attachDisabled?: boolean;
+  attachDisabledReason?: string;
 }) {
   const handleStarProject = () => {
     openBrowser(GITHUB_REPO_URL);
@@ -164,6 +168,8 @@ export function ChatInputBoxHeader({
         onToggleStatusPanel={onToggleStatusPanel}
         autoOpenFileEnabled={autoOpenFileEnabled}
         onRequestEnableFileContext={onRequestEnableFileContext}
+        attachDisabled={attachDisabled}
+        attachDisabledReason={attachDisabledReason}
       />
     </>
   );

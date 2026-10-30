@@ -18,6 +18,7 @@
  *   dsh      - DeepSeek Harness (Host RPC + WS mux against local `dsh web`)
  *   minimax  - MiniMax Code CLI (no SDK; spawns local `minimax` / mcode binary)
  *   zcode    - ZCode app-server (no SDK; persistent zcode.cjs app-server JSON-RPC child)
+ *   droid    - Factory Droid (@factory/droid-sdk; spawns local `droid exec` over stream-jsonrpc)
  *
  * Commands:
  *   send                - Send a message (parameters passed via stdin as JSON)
@@ -44,6 +45,7 @@ import { handleOmpCommand } from './channels/omp-channel.js';
 import { handleDshCommand } from './channels/dsh-channel.js';
 import { handleMiniMaxCommand } from './channels/minimax-channel.js';
 import { handleZcodeCommand } from './channels/zcode-channel.js';
+import { handleDroidCommand } from './channels/droid-channel.js';
 import { getSdkStatus, isClaudeSdkAvailable, isCodexSdkAvailable } from './utils/sdk-loader.js';
 import { configureCliIdentity } from './config/api-config.js';
 
@@ -140,6 +142,7 @@ const providerHandlers = {
   dsh: handleDshCommand,
   minimax: handleMiniMaxCommand,
   zcode: handleZcodeCommand,
+  droid: handleDroidCommand,
   system: handleSystemCommand
 };
 
@@ -150,7 +153,7 @@ const providerHandlers = {
     // Validate provider
     console.log('[DIAG-EXEC] Validating provider...');
     if (!provider || !providerHandlers[provider]) {
-      console.error('Invalid provider. Use "claude", "codex", "grok", "kimi", "opencode", "pi", "omp", "dsh", "minimax", "zcode", or "system"');
+      console.error('Invalid provider. Use "claude", "codex", "grok", "kimi", "opencode", "pi", "omp", "dsh", "minimax", "zcode", "droid", or "system"');
       console.log(JSON.stringify({
         success: false,
         error: 'Invalid provider: ' + provider

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Switch from 'antd/es/switch';
 import { useDropdownPosition } from '../../../hooks/useDropdownPosition';
@@ -9,10 +9,11 @@ import {
   resolveModelDisplayLabel,
   resolveModelIdForIcon,
 } from '../modelLabelUtils';
-import { useReasoningEffortGuard } from '../reasoningUtils';
+import { useReasoningEffortGuard, type DroidReasoningOptions } from '../reasoningUtils';
+import { droidModelRateLabel } from '../droidModelUtils';
 import {
   AVAILABLE_MODELS,
-  REASONING_LEVELS,
+  DROID_REASONING_LEVELS,
   modelSupports1MContext,
   normalizeClaudeModelId,
   strip1MContextSuffix,
@@ -81,13 +82,17 @@ interface ModelConfigSelectProps {
   onReasoningChange?: (effort: ReasoningEffort) => void;
   codexFastMode?: CodexFastMode;
   onCodexFastModeChange?: (mode: CodexFastMode) => void;
+  /** Called each time the popover opens (Droid: throttled catalog refresh). */
+  onOpen?: () => void;
+  /** Droid: manual catalog refresh offered inside the model list. */
+  onRefreshModels?: () => void;
 }
 
 function getReasoningLabel(
   t: (key: string, options?: { defaultValue?: string }) => string,
   effort: ReasoningEffort,
 ): string {
-  const fallback = REASONING_LEVELS.find((level) => level.id === effort)?.label || effort;
+  const fallback = DROID_REASONING_LEVELS.find((level) => level.id === effort)?.label || effort;
   return t(`reasoning.${effort}.label`, { defaultValue: fallback });
 }
 
@@ -112,6 +117,8 @@ export const ModelConfigSelect = ({
   onReasoningChange,
   codexFastMode = 'normal',
   onCodexFastModeChange,
+  onOpen,
+  onRefreshModels,
 }: ModelConfigSelectProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -184,13 +191,6 @@ export const ModelConfigSelect = ({
     onReasoningChange?.(effort);
   }, [onReasoningChange]);
 
-  const { isVisible: showEffort, currentLevel } = useReasoningEffortGuard(
-    reasoningEffort,
-    handleReasoningChange,
-    selectedModel,
-    currentProvider,
-  );
-
   const strippedValue = strip1MContextSuffix(selectedModel);
   const normalizedValue = currentProvider === 'claude' ? normalizeClaudeModelId(strippedValue) : strippedValue;
   const currentModel = models.find((model) => model.id === normalizedValue)
@@ -198,6 +198,26 @@ export const ModelConfigSelect = ({
     || (strippedValue
       ? { id: strippedValue, label: strippedValue } as ModelInfo
       : models[0]);
+
+  const droidSupportedKey = currentModel?.supportedReasoningEfforts?.join(',') ?? '';
+  const droidReasoning = useMemo<DroidReasoningOptions | undefined>(
+    () => (currentProvider === 'droid'
+      ? {
+          supportedEfforts: currentModel?.supportedReasoningEfforts,
+          defaultEffort: currentModel?.defaultReasoningEffort,
+        }
+      : undefined),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentProvider, droidSupportedKey, currentModel?.defaultReasoningEffort],
+  );
+
+  const { isVisible: showEffort, currentLevel } = useReasoningEffortGuard(
+    reasoningEffort,
+    handleReasoningChange,
+    selectedModel,
+    currentProvider,
+    droidReasoning,
+  );
   const modelMapping = readClaudeModelMapping();
   const show1MContext = currentProvider === 'claude'
     && modelSupports1MContext(selectedModel)
@@ -208,7 +228,7 @@ export const ModelConfigSelect = ({
   const contextSupported = modelSupports1MContext(selectedModel);
   const hasTrailingRows = showContextRow || showSpeed;
 
-  const modelLabel = currentModel
+  const baseModelLabel = currentModel
     ? resolveModelDisplayLabel(currentModel, {
         t,
         currentProvider,
@@ -217,6 +237,9 @@ export const ModelConfigSelect = ({
         longContextEnabled,
       })
     : selectedModel;
+  // Droid: keep the active Factory token rate visible on the trigger.
+  const droidRate = currentProvider === 'droid' ? droidModelRateLabel(currentModel, t) : '';
+  const modelLabel = droidRate ? `${baseModelLabel} · ${droidRate}` : baseModelLabel;
 
   const effortLabel = currentLevel ? getReasoningLabel(t, currentLevel.id) : '';
   const speedLabel = t(`codexFastMode.${codexFastMode}.label`, {
@@ -245,8 +268,9 @@ export const ModelConfigSelect = ({
     setActiveSubmenu('none');
     if (nextOpen) {
       mainRecalculate();
+      onOpen?.();
     }
-  }, [clearHoverTimer, isOpen, mainRecalculate]);
+  }, [clearHoverTimer, isOpen, mainRecalculate, onOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -329,6 +353,7 @@ export const ModelConfigSelect = ({
               error={error}
               onRetry={onRetry}
               onAddModel={onAddModel}
+              onRefresh={onRefreshModels}
               longContextEnabled={longContextEnabled}
               onLongContextChange={onLongContextChange}
               inline
@@ -422,6 +447,7 @@ export const ModelConfigSelect = ({
                   embedded
                   triggerRef={effortTriggerRef}
                   onClose={closeMenu}
+                  droidOptions={droidReasoning}
                 />
               )}
             </div>

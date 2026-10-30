@@ -15,6 +15,7 @@ const PROVIDER_TO_SDK: Record<string, string> = {
   omp: 'omp-cli',
   minimax: 'minimax-cli',
   zcode: 'zcode-cli',
+  droid: 'droid-sdk',
 };
 
 type SdkStatus = Record<string, { installed?: boolean; status?: string; meetsMinimumVersion?: boolean }>;

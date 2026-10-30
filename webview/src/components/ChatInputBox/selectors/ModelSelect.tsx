@@ -17,6 +17,12 @@ import {
   MAX_VISIBLE_MODEL_OPTIONS,
   shouldShowModelSearch,
 } from '../modelSelectUtils';
+import {
+  buildDroidModelSections,
+  droidModelDescription,
+  droidModelRateLabel,
+  isDroidByokModel,
+} from '../droidModelUtils';
 
 const RELATIVE_INLINE_BLOCK_STYLE: React.CSSProperties = { position: 'relative', display: 'inline-block' };
 const CHEVRON_ICON_STYLE: React.CSSProperties = { fontSize: '10px', marginLeft: '2px' };
@@ -32,6 +38,8 @@ const MODEL_OPTION_INFO_STYLE: React.CSSProperties = { display: 'flex', flexDire
 const MODEL_TEXT_STYLE: React.CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 const LONG_CONTEXT_OPTION_STYLE: React.CSSProperties = { justifyContent: 'space-between', cursor: 'default' };
 const LONG_CONTEXT_LABEL_STYLE: React.CSSProperties = { fontSize: '12px' };
+const MODEL_LABEL_ROW_STYLE: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 };
+const DISABLED_OPTION_STYLE: React.CSSProperties = { opacity: 0.5, cursor: 'not-allowed' };
 interface ModelSelectProps {
   value: string;
   onChange: (modelId: string) => void;
@@ -54,6 +62,8 @@ interface ModelSelectProps {
   onClose?: () => void;
   /** Hide the 1M toggle when the parent menu already exposes it. */
   hideLongContextToggle?: boolean;
+  /** Droid: manual catalog refresh row. */
+  onRefresh?: () => void;
 }
 
 const LOADING_OPTION_STYLE: React.CSSProperties = {
@@ -86,6 +96,7 @@ export const ModelSelect = ({
   triggerRef,
   onClose,
   hideLongContextToggle = false,
+  onRefresh,
 }: ModelSelectProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -136,8 +147,22 @@ export const ModelSelect = ({
     });
   };
 
+  const isDroid = currentProvider === 'droid';
+
   const getModelDescription = (model: ModelInfo): string | undefined => {
+    if (isDroid) {
+      if (model.disabled) {
+        return model.disabledReason || t('droid.modelDisabled', { defaultValue: 'Unavailable' });
+      }
+      return droidModelDescription(model, t);
+    }
     return resolveModelDescription(model, t);
+  };
+
+  const getTriggerLabel = (model: ModelInfo): string => {
+    const label = getModelLabel(model, true);
+    const rate = isDroid ? droidModelRateLabel(model, t) : '';
+    return rate ? `${label} · ${rate}` : label;
   };
 
   const normalizedSearchQuery = deferredSearchQuery.trim().toLowerCase();
@@ -148,9 +173,11 @@ export const ModelSelect = ({
         return [model.id, label, description].some((value) => value.toLowerCase().includes(normalizedSearchQuery));
       })
     : models;
-  const { sections, hiddenCount: hiddenModelCount } = buildModelDropdownSections(filteredModels, {
-    visibleLimit: MAX_VISIBLE_MODEL_OPTIONS,
-  });
+  const { sections, hiddenCount: hiddenModelCount } = isDroid
+    ? buildDroidModelSections(filteredModels, MAX_VISIBLE_MODEL_OPTIONS)
+    : buildModelDropdownSections(filteredModels, {
+        visibleLimit: MAX_VISIBLE_MODEL_OPTIONS,
+      });
   const visibleModelCount = sections.reduce((n, s) => n + s.models.length, 0);
   const showSearch = shouldShowModelSearch(models.length, searchQuery);
 
@@ -172,7 +199,8 @@ export const ModelSelect = ({
   /**
    * Select model
    */
-  const handleSelect = useCallback((modelId: string) => {
+  const handleSelect = useCallback((modelId: string, disabled?: boolean) => {
+    if (disabled) return;
     onChange(modelId);
     if (inline) return;
     setIsOpen(false);
@@ -284,12 +312,19 @@ export const ModelSelect = ({
                   <span>{section.label}</span>
                 </div>
               )}
-              {section.models.map((model) => (
+              {section.models.map((model) => {
+                const rowDisabled = isDroid && model.disabled === true;
+                const rateBadge = isDroid ? droidModelRateLabel(model, t) : '';
+                const description = getModelDescription(model);
+                return (
                 <div
                   key={model.id}
-                  className={`selector-option ${isSelectedModel(model.id) ? 'selected' : ''}`}
-                  onClick={() => handleSelect(model.id)}
+                  className={`selector-option ${isSelectedModel(model.id) ? 'selected' : ''}${rowDisabled ? ' disabled' : ''}`}
+                  onClick={() => handleSelect(model.id, rowDisabled)}
                   data-testid={`model-option-${model.id}`}
+                  aria-disabled={rowDisabled || undefined}
+                  title={rowDisabled ? description : undefined}
+                  style={rowDisabled ? DISABLED_OPTION_STYLE : undefined}
                 >
                   <ProviderModelIcon
                     providerId={currentProvider}
@@ -298,16 +333,27 @@ export const ModelSelect = ({
                     colored
                   />
                   <div style={MODEL_OPTION_INFO_STYLE}>
-                    <span style={MODEL_TEXT_STYLE}>{getModelLabel(model, false)}</span>
-                    {getModelDescription(model) && (
-                      <span className="model-description" style={MODEL_TEXT_STYLE}>{getModelDescription(model)}</span>
+                    <span style={MODEL_LABEL_ROW_STYLE}>
+                      <span style={MODEL_TEXT_STYLE}>{getModelLabel(model, false)}</span>
+                      {rateBadge && (
+                        <span
+                          className={`model-rate-badge${isDroidByokModel(model) ? ' model-rate-badge-byok' : ''}`}
+                          data-testid={`model-rate-${model.id}`}
+                        >
+                          {rateBadge}
+                        </span>
+                      )}
+                    </span>
+                    {description && (
+                      <span className="model-description" style={MODEL_TEXT_STYLE}>{description}</span>
                     )}
                   </div>
                   {isSelectedModel(model.id) && (
                     <span className="codicon codicon-check check-mark" />
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           ))}
           {visibleModelCount === 0 && (
@@ -322,6 +368,24 @@ export const ModelSelect = ({
                 defaultValue: `+ ${hiddenModelCount} more models. Type to search.`,
               })}
             </div>
+          )}
+          {isDroid && onRefresh && (
+            <>
+              <div className="selector-divider" />
+              <div
+                className="selector-option selector-option-status"
+                data-testid="model-refresh"
+                style={{ ...LOADING_OPTION_STYLE, cursor: loading ? 'default' : 'pointer' }}
+                title={t('droid.refreshModels', { defaultValue: 'Refresh models' })}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (!loading) onRefresh();
+                }}
+              >
+                <span className={`codicon codicon-refresh${loading ? ' codicon-modifier-spin' : ''}`} />
+                <span>{t('droid.refreshModels', { defaultValue: 'Refresh models' })}</span>
+              </div>
+            </>
           )}
           {!hideLongContextToggle && currentProvider === 'claude' && onLongContextChange && (
             <>
@@ -371,7 +435,7 @@ export const ModelSelect = ({
         ref={buttonRef}
         className="selector-button"
         onClick={handleToggle}
-        title={t('chat.currentModel', { model: getModelLabel(currentModel, true) })}
+        title={t('chat.currentModel', { model: getTriggerLabel(currentModel) })}
       >
         <ProviderModelIcon
           providerId={currentProvider}
@@ -383,7 +447,7 @@ export const ModelSelect = ({
           size={12}
           colored
         />
-        <span className="selector-button-text">{getModelLabel(currentModel, true)}</span>
+        <span className="selector-button-text">{getTriggerLabel(currentModel)}</span>
         <span className={`codicon codicon-chevron-${isOpen ? 'up' : 'down'}`} style={CHEVRON_ICON_STYLE} />
       </button>
 

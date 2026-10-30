@@ -76,6 +76,12 @@ const SDK_DEFINITIONS = [
     description: 'settings.dependency.codexSdkDescription',
     relatedProviders: ['openai'],
   },
+  {
+    id: 'droid-sdk' as SdkId,
+    nameKey: 'settings.dependency.droidSdkName',
+    description: 'settings.dependency.droidSdkDescription',
+    relatedProviders: ['droid'],
+  },
 ];
 
 const VersionSelect = ({
@@ -170,6 +176,7 @@ const DependencySection = ({ addToast, isActive }: DependencySectionProps) => {
   const [loadingVersions, setLoadingVersions] = useState<Record<SdkId, boolean>>({
     'claude-sdk': false,
     'codex-sdk': false,
+    'droid-sdk': false,
   });
   const logContainerRef = useRef<HTMLDivElement>(null);
   const isNodePathReadyRef = useRef(false);
@@ -439,6 +446,7 @@ const DependencySection = ({ addToast, isActive }: DependencySectionProps) => {
     setLoadingVersions({
       'claude-sdk': true,
       'codex-sdk': true,
+      'droid-sdk': true,
     });
     sendToJava('get_dependency_status:');
     sendToJava('check_dependency_updates:');

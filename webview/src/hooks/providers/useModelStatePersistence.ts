@@ -11,7 +11,9 @@ import {
   OMP_DEFAULT_MODEL_ID,
   DSH_DEFAULT_MODEL_ID,
   ZCODE_DEFAULT_MODEL_ID,
+  DROID_DEFAULT_MODEL_ID,
   DSH_PRESET_NONE,
+  isDroidReasoningEffort,
   isValidDshPreset,
   isValidPermissionMode,
   normalizeClaudeModelId,
@@ -69,6 +71,7 @@ export interface UseModelStatePersistenceOptions {
   setSelectedOmpModel: (value: string) => void;
   setSelectedDshModel: (value: string) => void;
   setSelectedZcodeModel: (value: string) => void;
+  setSelectedDroidModel: (value: string) => void;
   setGrokPermissionMode: (value: PermissionMode) => void;
   setKimiPermissionMode: (value: PermissionMode) => void;
   setMiniMaxPermissionMode: (value: PermissionMode) => void;
@@ -77,6 +80,8 @@ export interface UseModelStatePersistenceOptions {
   setOmpPermissionMode: (value: PermissionMode) => void;
   setDshPermissionMode: (value: PermissionMode) => void;
   setZcodePermissionMode: (value: PermissionMode) => void;
+  setDroidPermissionMode: (value: PermissionMode) => void;
+  setDroidReasoningEffort: (value: ReasoningEffort) => void;
   setPermissionMode: (value: PermissionMode) => void;
   setLongContextEnabled: (value: boolean) => void;
   setReasoningEffort: (value: ReasoningEffort) => void;
@@ -95,6 +100,7 @@ export interface UseModelStatePersistenceOptions {
   selectedOmpModel: string;
   selectedDshModel: string;
   selectedZcodeModel: string;
+  selectedDroidModel: string;
   grokPermissionMode: PermissionMode;
   kimiPermissionMode: PermissionMode;
   miniMaxPermissionMode: PermissionMode;
@@ -103,6 +109,8 @@ export interface UseModelStatePersistenceOptions {
   ompPermissionMode: PermissionMode;
   dshPermissionMode: PermissionMode;
   zcodePermissionMode: PermissionMode;
+  droidPermissionMode: PermissionMode;
+  droidReasoningEffort: ReasoningEffort;
   longContextEnabled: boolean;
   reasoningEffort: ReasoningEffort;
   codexFastMode: CodexFastMode;
@@ -127,6 +135,7 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
     setSelectedOmpModel,
     setSelectedDshModel,
     setSelectedZcodeModel,
+    setSelectedDroidModel,
     setGrokPermissionMode,
     setKimiPermissionMode,
     setMiniMaxPermissionMode,
@@ -135,6 +144,8 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
     setOmpPermissionMode,
     setDshPermissionMode,
     setZcodePermissionMode,
+    setDroidPermissionMode,
+    setDroidReasoningEffort,
     setPermissionMode,
     setLongContextEnabled,
     setReasoningEffort,
@@ -153,6 +164,7 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
     selectedOmpModel,
     selectedDshModel,
     selectedZcodeModel,
+    selectedDroidModel,
     grokPermissionMode,
     kimiPermissionMode,
     miniMaxPermissionMode,
@@ -161,6 +173,8 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
     ompPermissionMode,
     dshPermissionMode,
     zcodePermissionMode,
+    droidPermissionMode,
+    droidReasoningEffort,
     longContextEnabled,
     reasoningEffort,
     codexFastMode,
@@ -184,6 +198,7 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
       let restoredOmpModel = OMP_DEFAULT_MODEL_ID;
       let restoredDshModel = DSH_DEFAULT_MODEL_ID;
       let restoredZcodeModel = ZCODE_DEFAULT_MODEL_ID;
+      let restoredDroidModel = DROID_DEFAULT_MODEL_ID;
       let restoredGrokPermissionMode: PermissionMode = 'default';
       let restoredKimiPermissionMode: PermissionMode = 'default';
       let restoredMiniMaxPermissionMode: PermissionMode = 'default';
@@ -192,6 +207,8 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
       let restoredOmpPermissionMode: PermissionMode = 'default';
       let restoredDshPermissionMode: PermissionMode = 'default';
       let restoredZcodePermissionMode: PermissionMode = 'default';
+      let restoredDroidPermissionMode: PermissionMode = 'default';
+      let restoredDroidReasoningEffort: ReasoningEffort | null = null;
       let restoredLongContextEnabled = true;
       let restoredCodexFastMode: CodexFastMode = 'normal';
       let restoredDshPreset = DSH_PRESET_NONE;
@@ -251,6 +268,15 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
         const restoredZcodeMode = normalizeRestoredPermissionMode(state.zcodePermissionMode);
         if (restoredZcodeMode) {
           restoredZcodePermissionMode = normalizeCliPermissionMode(restoredZcodeMode, 'zcode');
+        }
+        // Droid keeps plan (Spec) and auto (Auto Medium) — normalizeCliPermissionMode exempts it.
+        const restoredDroidMode = normalizeRestoredPermissionMode(state.droidPermissionMode);
+        if (restoredDroidMode) {
+          restoredDroidPermissionMode = normalizeCliPermissionMode(restoredDroidMode, 'droid');
+        }
+        if (isDroidReasoningEffort(state.droidReasoningEffort)) {
+          restoredDroidReasoningEffort = state.droidReasoningEffort;
+          setDroidReasoningEffort(state.droidReasoningEffort);
         }
         if (isValidDshPreset(state.dshPreset)) {
           restoredDshPreset = state.dshPreset;
@@ -323,6 +349,10 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
           restoredZcodeModel = state.zcodeModel;
           setSelectedZcodeModel(state.zcodeModel);
         }
+        if (typeof state.droidModel === 'string' && state.droidModel.trim()) {
+          restoredDroidModel = state.droidModel;
+          setSelectedDroidModel(state.droidModel);
+        }
       }
 
       // Reconcile omp mode⇔model pairs saved by builds before the two were
@@ -349,6 +379,7 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
       setOmpPermissionMode(restoredOmpPermissionMode);
       setDshPermissionMode(restoredDshPermissionMode);
       setZcodePermissionMode(restoredZcodePermissionMode);
+      setDroidPermissionMode(restoredDroidPermissionMode);
 
       let initialPermissionMode: PermissionMode = restoredClaudePermissionMode;
       if (restoredProvider === 'codex') initialPermissionMode = restoredCodexPermissionMode;
@@ -360,6 +391,7 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
       else if (restoredProvider === 'omp') initialPermissionMode = restoredOmpPermissionMode;
       else if (restoredProvider === 'dsh') initialPermissionMode = restoredDshPermissionMode;
       else if (restoredProvider === 'zcode') initialPermissionMode = restoredZcodePermissionMode;
+      else if (restoredProvider === 'droid') initialPermissionMode = restoredDroidPermissionMode;
       setPermissionMode(initialPermissionMode);
 
       let syncRetryCount = 0;
@@ -378,9 +410,13 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
           else if (restoredProvider === 'omp') modelToSync = restoredOmpModel;
           else if (restoredProvider === 'dsh') modelToSync = restoredDshModel;
           else if (restoredProvider === 'zcode') modelToSync = restoredZcodeModel;
+          else if (restoredProvider === 'droid') modelToSync = restoredDroidModel;
           sendBridgeEvent('set_model', modelToSync);
           sendBridgeEvent('set_mode', initialPermissionMode);
           sendBridgeEvent('set_codex_fast_mode', restoredCodexFastMode);
+          if (restoredProvider === 'droid' && restoredDroidReasoningEffort) {
+            sendBridgeEvent('set_reasoning_effort', restoredDroidReasoningEffort);
+          }
         } else {
           syncRetryCount++;
           if (syncRetryCount < MAX_SYNC_RETRIES) {
@@ -410,6 +446,7 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
         ompModel: selectedOmpModel,
         dshModel: selectedDshModel,
         zcodeModel: selectedZcodeModel,
+        droidModel: selectedDroidModel,
         grokPermissionMode,
         kimiPermissionMode,
         miniMaxPermissionMode,
@@ -418,6 +455,8 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
         ompPermissionMode,
         dshPermissionMode,
         zcodePermissionMode,
+        droidPermissionMode,
+        droidReasoningEffort,
         longContextEnabled,
         reasoningEffort,
         codexFastMode,
@@ -440,6 +479,7 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
     selectedOmpModel,
     selectedDshModel,
     selectedZcodeModel,
+    selectedDroidModel,
     grokPermissionMode,
     kimiPermissionMode,
     miniMaxPermissionMode,
@@ -448,6 +488,8 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
     ompPermissionMode,
     dshPermissionMode,
     zcodePermissionMode,
+    droidPermissionMode,
+    droidReasoningEffort,
     longContextEnabled,
     reasoningEffort,
     codexFastMode,

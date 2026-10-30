@@ -82,6 +82,8 @@ export class DependencyHandler implements BridgeHandler {
     const CLAUDE_MIN_REQUIRED = '0.3.182';
     // Codex native auto review config requires @openai/codex-sdk >= 0.146.0 (upstream ae562df8).
     const CODEX_MIN_REQUIRED = '0.146.0';
+    // Droid SDK 0.10.0 is the first release with listModels(includeDisabled) + custom transports.
+    const DROID_MIN_REQUIRED = '0.10.0';
     const check = (sdkId: string, pkg: string): {
       installed: boolean;
       version: string;
@@ -94,7 +96,8 @@ export class DependencyHandler implements BridgeHandler {
       const minRequiredVersion =
         sdkId === 'claude-sdk' ? CLAUDE_MIN_REQUIRED
           : sdkId === 'codex-sdk' ? CODEX_MIN_REQUIRED
-            : undefined;
+            : sdkId === 'droid-sdk' ? DROID_MIN_REQUIRED
+              : undefined;
       if (!fs.existsSync(pkgDir)) {
         return {
           installed: false,
@@ -133,6 +136,7 @@ export class DependencyHandler implements BridgeHandler {
     };
     const claudeSdk = check('claude-sdk', '@anthropic-ai/claude-agent-sdk');
     const codexSdk = check('codex-sdk', '@openai/codex-sdk');
+    const droidSdk = check('droid-sdk', '@factory/droid-sdk');
     postJson(webview, 'update_dependency_status', {
       'claude-sdk': {
         id: 'claude-sdk',
@@ -154,6 +158,17 @@ export class DependencyHandler implements BridgeHandler {
         installPath: path.join(homedir(), '.codemoss', 'dependencies', 'codex-sdk'),
         meetsMinimumVersion: codexSdk.meetsMinimum,
         minimumVersion: codexSdk.minRequiredVersion,
+      },
+      'droid-sdk': {
+        id: 'droid-sdk',
+        name: 'Droid SDK',
+        status: droidSdk.installed ? 'installed' : 'not_installed',
+        installedVersion: droidSdk.version,
+        installPath: path.join(homedir(), '.codemoss', 'dependencies', 'droid-sdk'),
+        meetsMinimum: droidSdk.meetsMinimum,
+        minRequiredVersion: droidSdk.minRequiredVersion,
+        meetsMinimumVersion: droidSdk.meetsMinimum,
+        minimumVersion: droidSdk.minRequiredVersion,
       },
     });
   }
@@ -271,7 +286,7 @@ export class DependencyHandler implements BridgeHandler {
 
   private getDependencyVersions(content: string, webview: vscode.Webview): void {
     const { id } = parseJson<any>(content, { id: '' });
-    const ids = id ? [id] : ['claude-sdk', 'codex-sdk'];
+    const ids = id ? [id] : ['claude-sdk', 'codex-sdk', 'droid-sdk'];
     Promise.all(ids.map((sdkId) => this.fetchDependencyVersions(sdkId)))
       .then((entries) => {
         postJson(webview, 'dependency_versions_loaded', Object.fromEntries(entries));
@@ -279,14 +294,16 @@ export class DependencyHandler implements BridgeHandler {
   }
 
   private packageForSdk(sdkId: string): string {
-    return sdkId === 'codex-sdk' ? '@openai/codex-sdk' : '@anthropic-ai/claude-agent-sdk';
+    if (sdkId === 'codex-sdk') return '@openai/codex-sdk';
+    if (sdkId === 'droid-sdk') return '@factory/droid-sdk';
+    return '@anthropic-ai/claude-agent-sdk';
   }
 
   private checkDependencyUpdates(content: string, webview: vscode.Webview): void {
     this.sendDependencyStatus(webview);
 
     const { id } = parseJson<any>(content, { id: '' });
-    const ids = id ? [id] : ['claude-sdk', 'codex-sdk'];
+    const ids = id ? [id] : ['claude-sdk', 'codex-sdk', 'droid-sdk'];
 
     Promise.all(ids.map(async (sdkId) => {
       const local = this.getInstalledVersion(sdkId);
@@ -296,7 +313,7 @@ export class DependencyHandler implements BridgeHandler {
 
       return [sdkId, {
         sdkId,
-        sdkName: sdkId === 'codex-sdk' ? 'Codex SDK' : 'Claude Agent SDK',
+        sdkName: sdkId === 'codex-sdk' ? 'Codex SDK' : sdkId === 'droid-sdk' ? 'Droid SDK' : 'Claude Agent SDK',
         currentVersion: local,
         latestVersion: remote ?? local ?? '',
         hasUpdate,

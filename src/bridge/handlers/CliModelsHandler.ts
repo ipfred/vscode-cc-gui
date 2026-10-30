@@ -11,7 +11,7 @@ import { getDshSettings } from '../services/DshSettingsStore';
 const CHANNEL_SCRIPT = 'channel-manager.js';
 const TIMEOUT_MS = 50_000;
 const MAX_OUTPUT_CHARS = 64_000;
-const LIST_MODEL_PROVIDERS = new Set(['grok', 'kimi', 'opencode', 'pi', 'omp', 'dsh', 'zcode', 'minimax']);
+const LIST_MODEL_PROVIDERS = new Set(['grok', 'kimi', 'opencode', 'pi', 'omp', 'dsh', 'zcode', 'minimax', 'droid']);
 
 /**
  * Lists models for headless CLI providers (Kimi / OpenCode / PI / OMP / DSH) via channel-manager.
@@ -29,9 +29,19 @@ export class CliModelsHandler implements BridgeHandler {
   async handle({ event, content, webview }: BridgeMessage): Promise<boolean> {
     if (event !== 'get_cli_models') return false;
 
-    const provider = (content || '').trim().toLowerCase();
+    const request = parseModelListRequest(content);
+    const provider = request.provider;
     if (!LIST_MODEL_PROVIDERS.has(provider) || !isCliOnlyProvider(provider)) {
       this.pushError(webview, provider, `Unsupported CLI provider for model list: ${provider}`);
+      return true;
+    }
+
+    if (provider === 'droid') {
+      // The daemon caches the Droid catalog alongside the live sessions (which use
+      // it to validate reasoning levels); the reply arrives as window.setCliModels.
+      this.context.callbacks.sendDaemonRequest('droid_list_models', 'droid.listModels', {
+        force: request.force,
+      }, webview);
       return true;
     }
 
@@ -166,4 +176,25 @@ export class CliModelsHandler implements BridgeHandler {
       models: [],
     });
   }
+}
+
+/**
+ * `get_cli_models` content is the provider id; Droid also accepts
+ * `droid:refresh` or `{"provider":"droid","force":true}` to bypass the cache.
+ */
+export function parseModelListRequest(content: string): { provider: string; force: boolean } {
+  const raw = (content || '').trim();
+  if (raw.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(raw) as { provider?: unknown; force?: unknown };
+      return {
+        provider: typeof parsed.provider === 'string' ? parsed.provider.trim().toLowerCase() : '',
+        force: parsed.force === true,
+      };
+    } catch {
+      return { provider: '', force: false };
+    }
+  }
+  const [provider, flag] = raw.toLowerCase().split(':');
+  return { provider: provider.trim(), force: flag?.trim() === 'refresh' };
 }

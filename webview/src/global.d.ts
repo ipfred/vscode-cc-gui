@@ -301,6 +301,24 @@ interface Window {
   ) => void;
 
   /**
+   * Droid CLI `settings_updated` mirror (model / reasoning effort / mode).
+   * Fires after /model, Droid-initiated switches and webview-applied changes.
+   * Payload: { modelId, reasoningEffort, interactionMode, autonomyLevel, permissionMode }.
+   */
+  onDroidSettingsUpdated?: (
+    dataOrStr: string | {
+      modelId?: string;
+      reasoningEffort?: string;
+      interactionMode?: string;
+      autonomyLevel?: string;
+      permissionMode?: string;
+    }
+  ) => void;
+
+  /** Droid settings payload buffered before React registered the handler. */
+  __pendingDroidSettings?: string;
+
+  /**
    * DSH host lifecycle status. The extension pushes JSON after
    * `get_dsh_status` / `start_dsh_host` / `stop_dsh_host` /
    * `save_dsh_settings:<json>` via channel-manager `dsh status|ensureHost|stopHost`.

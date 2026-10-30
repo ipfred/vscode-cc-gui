@@ -42,6 +42,10 @@ interface ContextBarProps {
   autoOpenFileEnabled?: boolean;
   /** Callback to enable file context (called from placeholder click) */
   onRequestEnableFileContext?: () => void;
+  /** Disable the attach button (e.g. the selected model cannot read images) */
+  attachDisabled?: boolean;
+  /** Tooltip explaining why attaching is disabled */
+  attachDisabledReason?: string;
 }
 
 export const ContextBar: React.FC<ContextBarProps> = memo(({
@@ -62,6 +66,8 @@ export const ContextBar: React.FC<ContextBarProps> = memo(({
   onToggleStatusPanel,
   autoOpenFileEnabled = false,
   onRequestEnableFileContext,
+  attachDisabled = false,
+  attachDisabledReason,
 }) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -101,8 +107,9 @@ export const ContextBar: React.FC<ContextBarProps> = memo(({
   const handleAttachClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (attachDisabled) return;
     fileInputRef.current?.click();
-  }, []);
+  }, [attachDisabled]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -151,9 +158,11 @@ export const ContextBar: React.FC<ContextBarProps> = memo(({
       {/* Tool Icons Group */}
       <div className="context-tools">
         <div
-          className="context-tool-btn"
+          className={`context-tool-btn${attachDisabled ? ' disabled' : ''}`}
           onClick={handleAttachClick}
-          title="Add attachment"
+          title={attachDisabled ? (attachDisabledReason ?? 'Add attachment') : 'Add attachment'}
+          aria-disabled={attachDisabled || undefined}
+          data-testid="attach-button"
         >
           <span className="codicon codicon-attach" />
         </div>

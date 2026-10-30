@@ -21,7 +21,7 @@ export const getStreamEndHandlingMode = (
   if (isStreaming || currentTurnId > 0) {
     return 'full';
   }
-  if (provider === 'codex' || provider === 'grok' || provider === 'kimi' || provider === 'minimax' || provider === 'opencode' || provider === 'pi' || provider === 'omp' || provider === 'dsh' || provider === 'zcode') {
+  if (provider === 'codex' || provider === 'grok' || provider === 'kimi' || provider === 'minimax' || provider === 'opencode' || provider === 'pi' || provider === 'omp' || provider === 'dsh' || provider === 'zcode' || provider === 'droid') {
     return 'minimal';
   }
   return 'skip';

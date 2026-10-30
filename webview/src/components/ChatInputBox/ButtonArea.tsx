@@ -105,7 +105,7 @@ export const ButtonArea = ({
   const areaRef = useRef<HTMLDivElement>(null);
   const compact = useToolbarCompact(areaRef);
   // const fileInputRef = useRef<HTMLInputElement>(null);
-  const { cliModels, cliModelsLoading, cliModelsError, cliDefaultModel, refreshCliModels } = useCliModels(currentProvider);
+  const { cliModels, cliModelsLoading, cliModelsError, cliDefaultModel, refreshCliModels, refreshCliModelsThrottled } = useCliModels(currentProvider);
   // Dynamic omp roles (static smol/slow/plan fallback until loaded).
   const ompRoles = useOmpRoles();
 
@@ -180,7 +180,7 @@ export const ButtonArea = ({
     if (currentProvider === 'grok') {
       return GROK_MODELS;
     }
-    if (currentProvider === 'kimi' || currentProvider === 'minimax' || currentProvider === 'opencode' || currentProvider === 'pi' || currentProvider === 'dsh' || currentProvider === 'zcode') {
+    if (currentProvider === 'kimi' || currentProvider === 'minimax' || currentProvider === 'opencode' || currentProvider === 'pi' || currentProvider === 'dsh' || currentProvider === 'zcode' || currentProvider === 'droid') {
       return cliModels;
     }
     if (currentProvider === 'omp') {
@@ -241,13 +241,30 @@ export const ButtonArea = ({
       }
       return;
     }
-    if (currentProvider !== 'kimi' && currentProvider !== 'minimax' && currentProvider !== 'opencode' && currentProvider !== 'pi' && currentProvider !== 'dsh' && currentProvider !== 'zcode') return;
+    if (currentProvider !== 'kimi' && currentProvider !== 'minimax' && currentProvider !== 'opencode' && currentProvider !== 'pi' && currentProvider !== 'dsh' && currentProvider !== 'zcode' && currentProvider !== 'droid') return;
     if (!cliModels.length || !onModelSelect) return;
     const exists = cliModels.some((model) => model.id === selectedModel);
     if (!exists) {
+      if (currentProvider === 'droid') {
+        // Placeholder list only (catalog failed or not loaded): keep the saved pick.
+        if (cliModels.every((model) => !model.id)) return;
+        // Prefer the CLI's own default; never auto-pick a disabled entry.
+        const fallback = (cliDefaultModel && cliModels.some((model) => model.id === cliDefaultModel) ? cliDefaultModel : null)
+          ?? cliModels.find((model) => !model.disabled)?.id;
+        if (fallback !== undefined && fallback !== selectedModel) onModelSelect(fallback);
+        return;
+      }
       onModelSelect(cliDefaultModel ?? cliModels[0].id);
     }
   }, [availableModels, cliModels, cliModelsLoading, cliDefaultModel, currentProvider, onModelSelect, selectedModel]);
+
+  const handleModelMenuOpen = useCallback(() => {
+    if (currentProvider === 'droid') refreshCliModelsThrottled('droid');
+  }, [currentProvider, refreshCliModelsThrottled]);
+
+  const handleRefreshDroidModels = useCallback(() => {
+    refreshCliModels('droid');
+  }, [refreshCliModels]);
 
   /**
    * Handle submit button click
@@ -356,6 +373,8 @@ export const ButtonArea = ({
           onReasoningChange={handleReasoningChange}
           codexFastMode={codexFastMode}
           onCodexFastModeChange={handleCodexFastModeChange}
+          onOpen={currentProvider === 'droid' ? handleModelMenuOpen : undefined}
+          onRefreshModels={currentProvider === 'droid' ? handleRefreshDroidModels : undefined}
         />
         {currentProvider === 'dsh' && (
           <DshPresetSelect value={dshPreset} onChange={handleDshPresetChange} />

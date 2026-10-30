@@ -11,7 +11,7 @@ export interface BridgeHandler {
   handle(message: BridgeMessage): Promise<boolean> | boolean;
 }
 
-export type RuntimeProviderId = 'claude' | 'codex' | 'grok' | 'kimi' | 'opencode' | 'pi' | 'omp' | 'dsh' | 'zcode' | 'minimax';
+export type RuntimeProviderId = 'claude' | 'codex' | 'grok' | 'kimi' | 'opencode' | 'pi' | 'omp' | 'dsh' | 'zcode' | 'minimax' | 'droid';
 
 export interface BridgeCallbacks {
   setActiveProvider(provider: RuntimeProviderId): void;

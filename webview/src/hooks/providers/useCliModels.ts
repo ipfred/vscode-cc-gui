@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { sendBridgeEvent } from '../../utils/bridge';
 import type { ModelInfo } from '../../components/ChatInputBox/types';
-import { GROK_MODELS, KIMI_MODELS, MINIMAX_MODELS, OMP_MODELS, OMP_ROLE_MODELS, OPENCODE_MODELS, PI_MODELS, DSH_MODELS, ZCODE_MODELS } from '../../components/ChatInputBox/types';
+import { GROK_MODELS, KIMI_MODELS, MINIMAX_MODELS, OMP_MODELS, OMP_ROLE_MODELS, OPENCODE_MODELS, PI_MODELS, DSH_MODELS, ZCODE_MODELS, DROID_MODELS } from '../../components/ChatInputBox/types';
 import { isCliOnlyProvider } from './cliProviders';
 
 type CliModelsByProvider = Record<string, ModelInfo[]>;
@@ -27,6 +27,46 @@ function subscribeRoles(listener: () => void): () => void {
   };
 }
 
+/**
+ * Latest live catalog per provider, shared outside the ButtonArea hook instance
+ * (chat notices and the image-attach gate need Droid model metadata too).
+ */
+const modelsCache: Record<string, ModelInfo[]> = {};
+const defaultModelCache: Record<string, string> = {};
+const modelsListeners = new Set<() => void>();
+const NO_MODELS: ModelInfo[] = [];
+/** Last get_cli_models request time per provider, for throttled refreshes. */
+const lastRequestAt: Record<string, number> = {};
+
+function notifyModelsListeners() {
+  for (const listener of modelsListeners) listener();
+}
+
+function subscribeModels(listener: () => void): () => void {
+  modelsListeners.add(listener);
+  return () => {
+    modelsListeners.delete(listener);
+  };
+}
+
+/** Live catalog for a provider (empty until the first payload arrives). */
+export function getCachedCliModels(providerId: string): ModelInfo[] {
+  return modelsCache[providerId] ?? NO_MODELS;
+}
+
+/** CLI-reported default model id for a provider, if any. */
+export function getCachedCliDefaultModel(providerId: string): string | null {
+  return defaultModelCache[providerId] ?? null;
+}
+
+/** Subscribes to the live catalog of one provider. */
+export function useCachedCliModels(providerId: string): ModelInfo[] {
+  return useSyncExternalStore(subscribeModels, () => modelsCache[providerId] ?? NO_MODELS);
+}
+
+/** Minimum interval between automatic (dropdown-open) Droid catalog refreshes. */
+export const CLI_MODELS_REFRESH_THROTTLE_MS = 60_000;
+
 /** Java may never answer get_cli_models — don't leave the spinner on forever. */
 const CLI_MODELS_TIMEOUT_MS = 15_000;
 
@@ -39,10 +79,15 @@ function fallbackModels(providerId: string): ModelInfo[] {
   if (providerId === 'omp') return OMP_MODELS;
   if (providerId === 'dsh') return DSH_MODELS;
   if (providerId === 'zcode') return ZCODE_MODELS;
+  if (providerId === 'droid') return DROID_MODELS;
   return [];
 }
 
-function normalizeModels(raw: unknown): ModelInfo[] {
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+export function normalizeModels(raw: unknown): ModelInfo[] {
   if (!Array.isArray(raw)) return [];
   const out: ModelInfo[] = [];
   const seen = new Set<string>();
@@ -56,7 +101,28 @@ function normalizeModels(raw: unknown): ModelInfo[] {
       ? row.label.trim()
       : id;
     const description = typeof row.description === 'string' ? row.description : undefined;
-    out.push({ id, label, description });
+    const model: ModelInfo = { id, label, description };
+    // Optional Droid catalog metadata; other providers simply omit these.
+    if (typeof row.multiplier === 'number' && Number.isFinite(row.multiplier)) {
+      model.multiplier = row.multiplier;
+    } else if (row.multiplier === null) {
+      model.multiplier = null;
+    }
+    if (typeof row.disabled === 'boolean') model.disabled = row.disabled;
+    if (typeof row.disabledReason === 'string') model.disabledReason = row.disabledReason;
+    else if (row.disabledReason === null) model.disabledReason = null;
+    const group = optionalString(row.group);
+    if (group) model.group = group;
+    if (Array.isArray(row.supportedReasoningEfforts)) {
+      model.supportedReasoningEfforts = row.supportedReasoningEfforts.filter(
+        (effort): effort is string => typeof effort === 'string' && effort.trim().length > 0,
+      );
+    }
+    const defaultReasoningEffort = optionalString(row.defaultReasoningEffort);
+    if (defaultReasoningEffort) model.defaultReasoningEffort = defaultReasoningEffort;
+    if (typeof row.noImageSupport === 'boolean') model.noImageSupport = row.noImageSupport;
+    if (typeof row.isCustom === 'boolean') model.isCustom = row.isCustom;
+    out.push(model);
   }
   return out;
 }
@@ -79,7 +145,8 @@ export function useCliModels(currentProvider: string) {
     }
   }, []);
 
-  const beginLoad = useCallback((providerId: string) => {
+  // `force` makes the Droid daemon skip its 5-minute catalog cache.
+  const beginLoad = useCallback((providerId: string, force = false) => {
     clearPendingLoad();
     setLoadingProvider(providerId);
     setErrorByProvider((prev) => {
@@ -88,7 +155,8 @@ export function useCliModels(currentProvider: string) {
       delete next[providerId];
       return next;
     });
-    sendBridgeEvent('get_cli_models', providerId);
+    lastRequestAt[providerId] = Date.now();
+    sendBridgeEvent('get_cli_models', force && providerId === 'droid' ? 'droid:refresh' : providerId);
     pendingLoadRef.current = {
       provider: providerId,
       timer: setTimeout(() => {
@@ -120,6 +188,14 @@ export function useCliModels(currentProvider: string) {
       // roles → [] so consumers keep their static fallback.
       rolesCache[provider] = normalizeModels(payload.roles);
       notifyRolesListeners();
+      if (models.length > 0) {
+        modelsCache[provider] = models;
+      }
+      const reportedDefault = typeof payload.defaultModel === 'string' ? payload.defaultModel.trim() : '';
+      if (reportedDefault) {
+        defaultModelCache[provider] = reportedDefault;
+      }
+      notifyModelsListeners();
       setModelsByProvider((prev) => ({
         ...prev,
         [provider]: models.length > 0 ? models : fallbackModels(provider),
@@ -172,9 +248,30 @@ export function useCliModels(currentProvider: string) {
     beginLoad(currentProvider);
   }, [currentProvider, modelsByProvider, beginLoad]);
 
+  // Droid's catalog changes with plan/BYOK config, so re-fetch whenever Droid
+  // becomes the active provider again (the effect above only loads once).
+  const previousProviderRef = useRef<string | null>(null);
+  const loadedProvidersRef = useRef(modelsByProvider);
+  loadedProvidersRef.current = modelsByProvider;
+  useEffect(() => {
+    const previous = previousProviderRef.current;
+    previousProviderRef.current = currentProvider;
+    if (currentProvider !== 'droid' || previous === null || previous === 'droid') return;
+    if (!loadedProvidersRef.current.droid?.length) return;
+    beginLoad('droid', true);
+  }, [currentProvider, beginLoad]);
+
   const refreshCliModels = useCallback((providerId: string) => {
     if (!isCliOnlyProvider(providerId)) return;
-    beginLoad(providerId);
+    beginLoad(providerId, true);
+  }, [beginLoad]);
+
+  /** Refreshes unless a request for the provider went out within `minIntervalMs`. */
+  const refreshCliModelsThrottled = useCallback((providerId: string, minIntervalMs = CLI_MODELS_REFRESH_THROTTLE_MS) => {
+    if (!isCliOnlyProvider(providerId)) return;
+    const last = lastRequestAt[providerId];
+    if (last !== undefined && Date.now() - last < minIntervalMs) return;
+    beginLoad(providerId, true);
   }, [beginLoad]);
 
   const cliModels = modelsByProvider[currentProvider]?.length
@@ -187,6 +284,7 @@ export function useCliModels(currentProvider: string) {
     cliModelsError: errorByProvider[currentProvider] ?? null,
     cliDefaultModel: defaultModelByProvider[currentProvider] ?? null,
     refreshCliModels,
+    refreshCliModelsThrottled,
     modelsByProvider,
   };
 }

@@ -566,6 +566,18 @@ export function resolveOmpCliPath() {
   });
 }
 
+export function resolveDroidCliPath() {
+  return resolveCliPath({
+    binaryName: 'droid',
+    envKeys: ['DROID_BIN', 'DROID_PATH', 'DROID_CLI_PATH'],
+    homeCandidates: [
+      '{home}/.local/bin/{bin}',
+      '{home}/.factory/bin/{bin}',
+      '{localAppData}/Programs/droid/{bin}',
+    ],
+  });
+}
+
 export function resolveMiniMaxCliPath() {
   // Official installer exposes `minimax`; npm global installs expose `mcode`.
   // Try the official name first, then fall back to the npm bin name.

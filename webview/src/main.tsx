@@ -609,6 +609,13 @@ if (typeof window !== 'undefined' && !window.updateDependencyStatus) {
   };
 }
 
+// Buffer the Droid CLI's first settings_updated if it lands before React mounts.
+if (typeof window !== 'undefined' && !window.onDroidSettingsUpdated) {
+  window.onDroidSettingsUpdated = (data) => {
+    window.__pendingDroidSettings = typeof data === 'string' ? data : JSON.stringify(data);
+  };
+}
+
 // Pre-register dependencyUpdateAvailable to handle backend update checks that arrive before Settings/React initializes
 if (typeof window !== 'undefined' && !window.dependencyUpdateAvailable) {
   debugLog('[Main] Pre-registering dependencyUpdateAvailable placeholder');

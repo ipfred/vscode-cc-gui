@@ -3,7 +3,7 @@
  * Detection only — the plugin never auto-installs these binaries.
  */
 
-export type CliToolId = 'grok' | 'kimi' | 'opencode' | 'pi' | 'dsh' | 'omp' | 'minimax' | 'zcode';
+export type CliToolId = 'grok' | 'kimi' | 'opencode' | 'pi' | 'dsh' | 'omp' | 'minimax' | 'zcode' | 'droid';
 
 export interface CliToolStatus {
   id: CliToolId;
@@ -114,5 +114,14 @@ export const CLI_TOOL_DEFINITIONS: CliToolDefinition[] = [
     // app from the site, so the "command" slot carries the download page.
     installCommand: 'https://zcode.z.ai/cn',
     installCommandWindows: 'https://zcode.z.ai/cn',
+  },
+  {
+    id: 'droid',
+    nameKey: 'settings.cli.tools.droid.name',
+    descriptionKey: 'settings.cli.tools.droid.description',
+    binaryName: 'droid',
+    docsUrl: 'https://docs.factory.ai/cli/getting-started/quickstart',
+    installCommand: 'curl -fsSL https://app.factory.ai/cli | sh',
+    installCommandWindows: 'irm https://app.factory.ai/cli/windows | iex',
   },
 ];

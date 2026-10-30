@@ -3,9 +3,9 @@
  * Detection only — the plugin never auto-installs these binaries.
  */
 
-export type CliToolId = 'grok' | 'kimi' | 'opencode' | 'pi' | 'omp' | 'dsh' | 'zcode' | 'minimax';
+export type CliToolId = 'grok' | 'kimi' | 'opencode' | 'pi' | 'omp' | 'dsh' | 'zcode' | 'minimax' | 'droid';
 
-export const CLI_ONLY_PROVIDERS = new Set<string>(['grok', 'kimi', 'opencode', 'pi', 'omp', 'dsh', 'zcode', 'minimax']);
+export const CLI_ONLY_PROVIDERS = new Set<string>(['grok', 'kimi', 'opencode', 'pi', 'omp', 'dsh', 'zcode', 'minimax', 'droid']);
 
 export function isCliOnlyProvider(providerId: string | null | undefined): boolean {
   return !!providerId && CLI_ONLY_PROVIDERS.has(providerId);
@@ -16,7 +16,7 @@ export function isRuntimeProvider(providerId: string | null | undefined): boolea
 }
 
 /** Providers with a first-class history reader (local files or, for DSH, host RPC; ZCode queries its app-server live). */
-export const HISTORY_SUPPORTED_PROVIDERS = new Set<string>(['claude', 'codex', 'grok', 'omp', 'dsh', 'zcode', 'minimax']);
+export const HISTORY_SUPPORTED_PROVIDERS = new Set<string>(['claude', 'codex', 'grok', 'omp', 'dsh', 'zcode', 'minimax', 'droid']);
 
 /**
  * True when the history panel can list/load sessions for this runtime.
@@ -111,6 +111,15 @@ export const CLI_TOOL_DEFINITIONS: CliToolDefinition[] = [
     altBinaryName: 'mcode',
     envKeys: ['MINIMAX_BIN', 'MINIMAX_PATH', 'MINIMAX_CLI_PATH', 'MCODE_BIN'],
     homeBinDirs: ['.minimax/bin', '.minimax-code', '.local/bin'],
+  },
+  {
+    id: 'droid',
+    displayName: 'Factory Droid',
+    // Driven through @factory/droid-sdk, which spawns this binary as
+    // `droid exec --input-format stream-jsonrpc` with the CLI's own login.
+    binaryName: 'droid',
+    envKeys: ['DROID_BIN', 'DROID_PATH', 'DROID_CLI_PATH'],
+    homeBinDirs: ['.local/bin', '.factory/bin'],
   },
 ];
 

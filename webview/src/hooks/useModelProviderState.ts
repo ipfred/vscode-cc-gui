@@ -20,6 +20,8 @@ import { usePiProvider } from './providers/usePiProvider';
 import { useOmpProvider } from './providers/useOmpProvider';
 import { useDshProvider } from './providers/useDshProvider';
 import { useZcodeProvider } from './providers/useZcodeProvider';
+import { useDroidProvider } from './providers/useDroidProvider';
+import { useDroidSettingsSync } from './providers/useDroidSettingsSync';
 import { isCliOnlyProvider, normalizeCliPermissionMode, ompModeForModelId } from './providers/cliProviders';
 import { useOmpRoles } from './providers/useCliModels';
 import { useUsageTracking } from './providers/useUsageTracking';
@@ -56,6 +58,7 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
   const ompRoles = useOmpRoles();
   const dsh = useDshProvider();
   const zcode = useZcodeProvider();
+  const droid = useDroidProvider();
   const { isSdkInstalled, ...usage } = useUsageTracking();
   const settings = useProviderSettings({ addToast, t });
 
@@ -104,6 +107,22 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     selectedZcodeModel, setSelectedZcodeModel,
     zcodePermissionMode, setZcodePermissionMode,
   } = zcode;
+  const {
+    selectedDroidModel, setSelectedDroidModel,
+    droidPermissionMode, setDroidPermissionMode,
+    droidReasoningEffort, setDroidReasoningEffort,
+    handleDroidReasoningChange,
+  } = droid;
+
+  useDroidSettingsSync({
+    t,
+    currentProviderRef,
+    selectedDroidModel,
+    setSelectedDroidModel,
+    setDroidReasoningEffort,
+    setDroidPermissionMode,
+    setPermissionMode,
+  });
 
   useModelStatePersistence({
     setCurrentProvider,
@@ -119,6 +138,7 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     setSelectedOmpModel,
     setSelectedDshModel,
     setSelectedZcodeModel,
+    setSelectedDroidModel,
     setGrokPermissionMode,
     setKimiPermissionMode,
     setMiniMaxPermissionMode,
@@ -127,6 +147,8 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     setOmpPermissionMode,
     setDshPermissionMode,
     setZcodePermissionMode,
+    setDroidPermissionMode,
+    setDroidReasoningEffort,
     setDshPreset,
     setPermissionMode,
     setLongContextEnabled,
@@ -145,6 +167,7 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     selectedOmpModel,
     selectedDshModel,
     selectedZcodeModel,
+    selectedDroidModel,
     grokPermissionMode,
     kimiPermissionMode,
     miniMaxPermissionMode,
@@ -153,6 +176,8 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     ompPermissionMode,
     dshPermissionMode,
     zcodePermissionMode,
+    droidPermissionMode,
+    droidReasoningEffort,
     dshPreset,
     longContextEnabled,
     reasoningEffort,
@@ -177,7 +202,9 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
                 ? selectedDshModel
                 : currentProvider === 'zcode'
                   ? selectedZcodeModel
-                  : selectedClaudeModel;
+                  : currentProvider === 'droid'
+                    ? selectedDroidModel
+                    : selectedClaudeModel;
 
   const currentSdkInstalled = useMemo(
     () => isSdkInstalled(currentProvider),
@@ -225,6 +252,7 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
       if (currentProvider === 'pi') setPiPermissionMode(cliMode);
       if (currentProvider === 'dsh') setDshPermissionMode(cliMode);
       if (currentProvider === 'zcode') setZcodePermissionMode(cliMode);
+      if (currentProvider === 'droid') setDroidPermissionMode(cliMode);
       if (currentProvider === 'omp') {
         setOmpPermissionMode(cliMode);
         // The omp mode selector is a shortcut over the model value: role modes
@@ -259,6 +287,7 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     setSelectedOmpModel,
     setDshPermissionMode,
     setZcodePermissionMode,
+    setDroidPermissionMode,
   ]);
 
   const handleModelSelect = useCallback((modelId: string) => {
@@ -304,6 +333,9 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     } else if (currentProvider === 'zcode') {
       setSelectedZcodeModel(modelId);
       sendBridgeEvent('set_model', modelId);
+    } else if (currentProvider === 'droid') {
+      setSelectedDroidModel(modelId);
+      sendBridgeEvent('set_model', modelId);
     }
   }, [
     currentProvider,
@@ -320,6 +352,7 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     setOmpPermissionMode,
     setSelectedDshModel,
     setSelectedZcodeModel,
+    setSelectedDroidModel,
   ]);
 
   const handleProviderSelect = useCallback((providerId: string) => {
@@ -351,6 +384,8 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
       modeToSet = normalizeCliPermissionMode(dshPermissionMode, providerId);
     } else if (providerId === 'zcode') {
       modeToSet = normalizeCliPermissionMode(zcodePermissionMode, providerId);
+    } else if (providerId === 'droid') {
+      modeToSet = normalizeCliPermissionMode(droidPermissionMode, providerId);
     }
     setPermissionMode(modeToSet);
     // Dynamic omp roles are not in the backend's static mode whitelist — the
@@ -369,7 +404,11 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     else if (providerId === 'omp') newModel = selectedOmpModel;
     else if (providerId === 'dsh') newModel = selectedDshModel;
     else if (providerId === 'zcode') newModel = selectedZcodeModel;
+    else if (providerId === 'droid') newModel = selectedDroidModel;
     sendBridgeEvent('set_model', newModel);
+    if (providerId === 'droid') {
+      sendBridgeEvent('set_reasoning_effort', droidReasoningEffort);
+    }
   }, [
     claudePermissionMode,
     codexPermissionMode,
@@ -382,6 +421,8 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     ompPermissionMode,
     dshPermissionMode,
     zcodePermissionMode,
+    droidPermissionMode,
+    droidReasoningEffort,
     selectedCodexModel,
     selectedClaudeModel,
     selectedGrokModel,
@@ -392,6 +433,7 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     selectedOmpModel,
     selectedDshModel,
     selectedZcodeModel,
+    selectedDroidModel,
     longContextEnabled,
   ]);
 
@@ -459,8 +501,13 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     ...omp,
     ...dsh,
     ...zcode,
+    ...droid,
     ...usage,
     ...settings,
+    // Droid keeps its own effort (per-model effort sets incl. none/off/minimal);
+    // the shared reasoning props follow whichever provider is active.
+    reasoningEffort: currentProvider === 'droid' ? droidReasoningEffort : reasoningEffort,
+    handleReasoningChange: currentProvider === 'droid' ? handleDroidReasoningChange : codex.handleReasoningChange,
     currentProvider, setCurrentProvider,
     permissionMode, setPermissionMode,
     selectedModel,

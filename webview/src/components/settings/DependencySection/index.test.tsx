@@ -11,6 +11,8 @@ const translations: Record<string, string> = {
   'settings.dependency.codexSdkName': 'Codex SDK',
   'settings.dependency.claudeSdkDescription': 'Claude AI 功能所需。包含 Claude Code SDK 及相关依赖。',
   'settings.dependency.codexSdkDescription': 'Codex AI 功能所需。包含 OpenAI Codex SDK。',
+  'settings.dependency.droidSdkName': 'Droid SDK',
+  'settings.dependency.droidSdkDescription': 'Droid AI 功能所需。包含 @factory/droid-sdk。',
   'settings.dependency.targetVersion': '目标版本',
   'settings.dependency.loadingVersions': '版本列表加载中',
   'settings.dependency.installedVersion': '当前版本 {{version}}',
@@ -72,6 +74,12 @@ describe('DependencySection', () => {
           status: 'not_installed',
           hasUpdate: false,
         },
+        'droid-sdk': {
+          id: 'droid-sdk',
+          name: 'Droid SDK',
+          status: 'not_installed',
+          hasUpdate: false,
+        },
       }));
 
       window.dependencyVersionsLoaded?.(JSON.stringify({
@@ -87,14 +95,22 @@ describe('DependencySection', () => {
           source: 'remote',
           latestVersion: '0.118.0',
         },
+        'droid-sdk': {
+          sdkId: 'droid-sdk',
+          versions: ['0.10.0'],
+          source: 'remote',
+          latestVersion: '0.10.0',
+        },
       }));
     });
 
     expect(screen.queryByText('自定义版本')).toBeNull();
-    expect(screen.getAllByText('目标版本')).toHaveLength(2);
+    expect(screen.getAllByText('目标版本')).toHaveLength(3);
     expect(screen.queryByRole('combobox')).toBeNull();
     expect(screen.getByRole('button', { name: '目标版本 v0.2.89' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '目标版本 v0.118.0' })).toBeTruthy();
+    expect(screen.getByText('Droid SDK')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '目标版本 v0.10.0' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '当前版本' })).toBeTruthy();
     expect(screen.getAllByRole('button', { name: '卸载' })).toHaveLength(1);
   });
@@ -169,6 +185,12 @@ describe('DependencySection', () => {
           status: 'not_installed',
           hasUpdate: false,
         },
+        'droid-sdk': {
+          id: 'droid-sdk',
+          name: 'Droid SDK',
+          status: 'not_installed',
+          hasUpdate: false,
+        },
       }));
     });
 
@@ -188,6 +210,12 @@ describe('DependencySection', () => {
           versions: ['0.118.0', '0.117.0'],
           source: 'remote',
           latestVersion: '0.118.0',
+        },
+        'droid-sdk': {
+          sdkId: 'droid-sdk',
+          versions: ['0.10.0'],
+          source: 'remote',
+          latestVersion: '0.10.0',
         },
       }));
     });

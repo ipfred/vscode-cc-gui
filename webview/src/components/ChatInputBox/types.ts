@@ -283,6 +283,18 @@ export interface ModelInfo {
   id: string;
   label: string;
   description?: string;
+  /** Droid: Factory token-rate multiplier (null for BYOK/custom models). */
+  multiplier?: number | null;
+  /** Droid: model is listed but cannot be selected (plan/org restriction). */
+  disabled?: boolean;
+  disabledReason?: string | null;
+  /** Droid: catalog group (Auto / Anthropic / OpenAI / Google / xAI / Factory / BYOK). */
+  group?: string;
+  supportedReasoningEfforts?: string[];
+  defaultReasoningEffort?: string;
+  noImageSupport?: boolean;
+  /** Droid: user-configured BYOK model. */
+  isCustom?: boolean;
 }
 
 /**
@@ -644,6 +656,50 @@ export const ZCODE_MODELS: ModelInfo[] = [
 ];
 
 /**
+ * Droid: the real catalog always comes from the CLI (`get_cli_models`). This
+ * placeholder only exists so the selector has something to render before the
+ * first payload arrives; the empty id lets the CLI pick its own default.
+ */
+export const DROID_DEFAULT_MODEL_ID = '';
+
+export const DROID_MODELS: ModelInfo[] = [
+  {
+    id: DROID_DEFAULT_MODEL_ID,
+    label: 'Default (CLI)',
+    description: 'Use the Droid CLI default model',
+  },
+];
+
+/** Display order of Droid catalog groups in the model dropdown. */
+export const DROID_MODEL_GROUP_ORDER = ['Auto', 'Anthropic', 'OpenAI', 'Google', 'xAI', 'Factory', 'BYOK'] as const;
+
+/**
+ * Formats a Factory token-rate multiplier: trailing zeros trimmed, at most
+ * three decimals (1.6 → "1.6×", 0.04 → "0.04×", 12 → "12×").
+ */
+export function formatDroidMultiplier(multiplier: number | null | undefined): string {
+  if (typeof multiplier !== 'number' || !Number.isFinite(multiplier)) return '';
+  const rounded = Math.round(multiplier * 1000) / 1000;
+  return `${String(rounded)}×`;
+}
+
+/** Droid permission modes in the CLI's Shift+Tab cycle order. */
+export const DROID_MODE_IDS: readonly PermissionMode[] = ['plan', 'default', 'acceptEdits', 'auto', 'bypassPermissions'];
+
+/** i18n key segment under `droidModes.*` for each Droid mode id. */
+export const DROID_MODE_I18N_KEYS: Record<string, string> = {
+  plan: 'spec',
+  default: 'autoOff',
+  acceptEdits: 'autoLow',
+  auto: 'autoMedium',
+  bypassPermissions: 'autoHigh',
+};
+
+export function isDroidPermissionMode(mode: string | null | undefined): mode is PermissionMode {
+  return typeof mode === 'string' && DROID_MODE_IDS.includes(mode);
+}
+
+/**
  * Available models (backward compatibility)
  */
 export const AVAILABLE_MODELS = CLAUDE_MODELS;
@@ -674,6 +730,7 @@ export const AVAILABLE_PROVIDERS: ProviderInfo[] = [
   { id: 'dsh', label: 'DeepSeek Harness', icon: 'codicon-terminal', enabled: true, beta: true },
   { id: 'minimax', label: 'MiniMax Code', icon: 'codicon-terminal', enabled: true, beta: true },
   { id: 'zcode', label: 'ZCode', icon: 'codicon-terminal', enabled: true, beta: true },
+  { id: 'droid', label: 'Droid', icon: 'codicon-terminal', enabled: true, beta: true },
 ];
 
 /**
@@ -721,7 +778,11 @@ export function codexModelSupportsMaxEffort(modelId: string): boolean {
   return modelId.trim().toLowerCase().includes('gpt-5.6') || modelId.trim().toLowerCase().includes('gpt-6');
 }
 
-export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+/**
+ * The first five values are shared by Codex/Claude/CLI providers; none/off/
+ * minimal only appear for Droid models whose catalog entry lists them.
+ */
+export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max' | 'none' | 'off' | 'minimal';
 
 /**
  * Codex execution speed mode.
@@ -774,6 +835,34 @@ export const REASONING_LEVELS: ReasoningInfo[] = [
     description: 'Maximum reasoning depth',
   },
 ];
+
+/** Extra reasoning levels only offered by some Droid models. */
+export const DROID_EXTRA_REASONING_LEVELS: ReasoningInfo[] = [
+  {
+    id: 'none',
+    label: 'None',
+    icon: 'codicon-circle-slash',
+    description: 'No extended reasoning',
+  },
+  {
+    id: 'off',
+    label: 'Off',
+    icon: 'codicon-circle-slash',
+    description: 'Reasoning disabled',
+  },
+  {
+    id: 'minimal',
+    label: 'Minimal',
+    icon: 'codicon-circle-outline',
+    description: 'Minimal reasoning for the fastest responses',
+  },
+];
+
+export const DROID_REASONING_LEVELS: ReasoningInfo[] = [...DROID_EXTRA_REASONING_LEVELS, ...REASONING_LEVELS];
+
+export function isDroidReasoningEffort(value: unknown): value is ReasoningEffort {
+  return typeof value === 'string' && DROID_REASONING_LEVELS.some((level) => level.id === value);
+}
 
 // ============================================================
 // Usage Types

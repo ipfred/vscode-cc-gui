@@ -21,6 +21,14 @@ describe('normalizeCliPermissionMode', () => {
     }
   });
 
+  it('keeps all five Droid modes (Spec / Auto Off–High) and drops unknown ids', () => {
+    for (const mode of ['plan', 'default', 'acceptEdits', 'auto', 'bypassPermissions']) {
+      expect(normalizeCliPermissionMode(mode, 'droid')).toBe(mode);
+    }
+    expect(normalizeCliPermissionMode('autoEdit', 'droid')).toBe('acceptEdits');
+    expect(normalizeCliPermissionMode('smol', 'droid')).toBe('default');
+  });
+
   it('coerces unsupported plan/auto modes to default when no provider is given (legacy callers)', () => {
     expect(normalizeCliPermissionMode('plan')).toBe('default');
     expect(normalizeCliPermissionMode('auto')).toBe('default');
@@ -57,6 +65,7 @@ describe('isCliOnlyProvider', () => {
   it('recognizes omp as a CLI-only provider', () => {
     expect(isCliOnlyProvider('omp')).toBe(true);
     expect(isCliOnlyProvider('pi')).toBe(true);
+    expect(isCliOnlyProvider('droid')).toBe(true);
     expect(isCliOnlyProvider('claude')).toBe(false);
     expect(isCliOnlyProvider(undefined)).toBe(false);
   });

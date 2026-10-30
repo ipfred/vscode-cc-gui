@@ -6,6 +6,7 @@ import { openBrowser } from '../../../utils/bridge';
 import { useHiddenCliProviders } from '../../../hooks/useCliProviderVisibility';
 import { setCliProviderHidden } from '../../../utils/cliProviderVisibility';
 import DshConnectionCard from './DshConnectionCard';
+import DroidSdkCard from './DroidSdkCard';
 import {
   CLI_TOOL_DEFINITIONS,
   type CliStatusMap,
@@ -354,7 +355,7 @@ const CliSection = ({ addToast }: CliSectionProps) => {
             return (
               <div
                 key={tool.id}
-                className={tool.id === 'dsh' ? styles.dshGroup : undefined}
+                className={tool.id === 'dsh' || tool.id === 'droid' ? styles.dshGroup : undefined}
               >
                 <div
                   className={`${styles.cliCard} ${installed ? styles.installed : styles.missing} ${switcherHidden ? styles.switcherHidden : ''}`}
@@ -437,6 +438,8 @@ const CliSection = ({ addToast }: CliSectionProps) => {
                 </div>
                 {/* Host connection belongs with the DSH install row, not above the whole CLI list. */}
                 {tool.id === 'dsh' && <DshConnectionCard />}
+                {/* Droid also needs @factory/droid-sdk next to the CLI binary. */}
+                {tool.id === 'droid' && <DroidSdkCard addToast={addToast} />}
               </div>
             );
           })

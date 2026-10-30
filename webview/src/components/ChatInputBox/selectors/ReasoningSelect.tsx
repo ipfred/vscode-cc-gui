@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { REASONING_LEVELS, type ReasoningEffort } from '../types';
-import { useReasoningEffortGuard } from '../reasoningUtils';
+import { DROID_REASONING_LEVELS, type ReasoningEffort } from '../types';
+import { useReasoningEffortGuard, type DroidReasoningOptions } from '../reasoningUtils';
 import { useDropdownPosition } from '../../../hooks/useDropdownPosition';
 
 const RELATIVE_INLINE_BLOCK_STYLE: React.CSSProperties = { position: 'relative', display: 'inline-block' };
@@ -27,6 +27,8 @@ interface ReasoningSelectProps {
   embedded?: boolean;
   triggerRef?: React.RefObject<HTMLElement | null>;
   onClose?: () => void;
+  /** Droid: the selected model's effort set / default. */
+  droidOptions?: DroidReasoningOptions;
 }
 
 /**
@@ -47,6 +49,7 @@ export const ReasoningSelect = ({
   embedded = false,
   triggerRef,
   onClose,
+  droidOptions,
 }: ReasoningSelectProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
@@ -67,6 +70,7 @@ export const ReasoningSelect = ({
     onChange,
     selectedModel,
     currentProvider,
+    droidOptions,
   );
 
   /**
@@ -74,7 +78,7 @@ export const ReasoningSelect = ({
    */
   const getReasoningText = (levelId: ReasoningEffort, field: 'label' | 'description') => {
     const key = `reasoning.${levelId}.${field}`;
-    const fallback = REASONING_LEVELS.find(l => l.id === levelId)?.[field] || levelId;
+    const fallback = DROID_REASONING_LEVELS.find(l => l.id === levelId)?.[field] || levelId;
     return t(key, { defaultValue: fallback });
   };
 

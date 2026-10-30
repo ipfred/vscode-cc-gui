@@ -8,6 +8,7 @@
 
 import type { MutableRefObject, RefObject } from 'react';
 import { forceWebviewRepaint } from '../../utils/forceWebviewRepaint';
+import { clearLocalNotices } from '../../utils/localNotices';
 
 export interface ResetTransientUiStateOptions {
   clearToasts: () => void;
@@ -75,6 +76,7 @@ export const buildResetTransientUiState = (opts: ResetTransientUiStateOptions) =
     // streaming coalescer) would otherwise re-apply the old session's snapshot
     // after setMessages([]) and resurrect the previous conversation in the UI.
     invalidatePendingMessageSnapshots();
+    clearLocalNotices();
 
     opts.clearToasts();
     opts.setStatus('');

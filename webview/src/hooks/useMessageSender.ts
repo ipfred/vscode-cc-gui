@@ -9,6 +9,7 @@ import {
 import type { Attachment, ChatInputBoxHandle, PermissionMode, ReasoningEffort, SelectedAgent, CodexFastMode } from '../components/ChatInputBox/types';
 import type { ViewMode } from './useModelProviderState';
 import { isCliOnlyProvider } from './providers/cliProviders';
+import { getCachedCliModels } from './providers/useCliModels';
 
 /**
  * Command sets for local handling (shared with App.tsx to avoid duplication)
@@ -33,6 +34,19 @@ function shouldSendReasoningEffort(provider: string, model: string): boolean {
     return true;
   }
   return EFFORT_SUPPORTED_CLAUDE_MODELS.has(model);
+}
+
+/**
+ * Droid models advertise their own effort set. When the selector is hidden
+ * (single-value models) the stored effort may not apply, so fall back to the
+ * model's default instead of sending a value the daemon would reject.
+ */
+export function resolveDroidSendReasoningEffort(model: string, effort: ReasoningEffort): ReasoningEffort | string | undefined {
+  const info = getCachedCliModels('droid').find((entry) => entry.id === model);
+  const supported = info?.supportedReasoningEfforts;
+  if (!supported || supported.length === 0) return effort;
+  if (supported.includes(effort)) return effort;
+  return info?.defaultReasoningEffort ?? supported[0];
 }
 
 export interface UseMessageSenderOptions {
@@ -159,7 +173,8 @@ export function useMessageSender({
   const checkContextCommand = useCallback((text: string): boolean => {
     if (!text.startsWith('/')) return false;
     const command = text.split(WHITESPACE_REGEX)[0].toLowerCase();
-    if (CONTEXT_COMMANDS.has(command)) {
+    // Droid's daemon implements /context itself; its output streams back as text.
+    if (CONTEXT_COMMANDS.has(command) && currentProvider !== 'droid') {
       if (currentProvider !== 'claude') {
         addToast(t('chat.commandProviderOnly', {
           command,
@@ -281,9 +296,14 @@ export function useMessageSender({
       effectiveMode: effectivePermissionMode,
     });
 
-    const reasoningEffortPayload = shouldSendReasoningEffort(currentProvider, selectedModel)
-      ? { reasoningEffort }
-      : {};
+    const droidEffort = currentProvider === 'droid'
+      ? resolveDroidSendReasoningEffort(selectedModel, reasoningEffort)
+      : undefined;
+    const reasoningEffortPayload = currentProvider === 'droid'
+      ? (droidEffort ? { reasoningEffort: droidEffort } : {})
+      : shouldSendReasoningEffort(currentProvider, selectedModel)
+        ? { reasoningEffort }
+        : {};
     const sessionResumePayload = currentSessionId
       ? {
           sessionId: currentSessionId,

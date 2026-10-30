@@ -33,6 +33,10 @@ interface UsePasteAndDropOptions {
   handleInput: (isComposingFromEvent?: boolean) => void;
   /** Immediately flush pending debounced onInput to sync parent state */
   flushInput: () => void;
+  /** Reject pasted/dropped images (the selected model cannot read them) */
+  imagesDisabled?: boolean;
+  /** Called once per paste/drop that contained rejected images */
+  onImageRejected?: () => void;
 }
 
 interface UsePasteAndDropReturn {
@@ -65,6 +69,8 @@ export function usePasteAndDrop({
   closeAllCompletions,
   handleInput,
   flushInput,
+  imagesDisabled = false,
+  onImageRejected,
 }: UsePasteAndDropOptions): UsePasteAndDropReturn {
   /**
    * Handle paste event - detect images and plain text
@@ -86,6 +92,11 @@ export function usePasteAndDrop({
         if (item.type.startsWith('image/')) {
           hasImage = true;
           e.preventDefault();
+
+          if (imagesDisabled) {
+            onImageRejected?.();
+            return;
+          }
 
           const blob = item.getAsFile();
 
@@ -231,6 +242,8 @@ export function usePasteAndDrop({
       setInternalAttachments,
       handleInput,
       flushInput,
+      imagesDisabled,
+      onImageRejected,
     ]
   );
 
@@ -320,6 +333,7 @@ export function usePasteAndDrop({
           const file = files[i];
           if (file.type.startsWith('image/')) {
             hasImageFile = true;
+            if (imagesDisabled) continue;
             const reader = new FileReader();
             reader.onload = () => {
               const base64 = (reader.result as string).split(',')[1];
@@ -344,6 +358,7 @@ export function usePasteAndDrop({
       }
 
       if (hasImageFile) {
+        if (imagesDisabled) onImageRejected?.();
         return;
       }
 
@@ -384,7 +399,7 @@ export function usePasteAndDrop({
         }
       });
     },
-    [setInternalAttachments, insertFilePathReferences]
+    [setInternalAttachments, insertFilePathReferences, imagesDisabled, onImageRejected]
   );
 
   // Listen for image paste events dispatched from Java side (when clipboard has image but no text)
@@ -392,6 +407,10 @@ export function usePasteAndDrop({
     const onJavaPasteImage = (e: Event) => {
       const { base64, mediaType } = (e as CustomEvent).detail;
       if (!base64) return;
+      if (imagesDisabled) {
+        onImageRejected?.();
+        return;
+      }
       const ext = mediaType?.split('/')[1] || 'png';
       const attachment: Attachment = {
         id: generateId(),
@@ -403,7 +422,7 @@ export function usePasteAndDrop({
     };
     window.addEventListener('java-paste-image', onJavaPasteImage);
     return () => window.removeEventListener('java-paste-image', onJavaPasteImage);
-  }, [setInternalAttachments]);
+  }, [setInternalAttachments, imagesDisabled, onImageRejected]);
 
   return {
     handlePaste,

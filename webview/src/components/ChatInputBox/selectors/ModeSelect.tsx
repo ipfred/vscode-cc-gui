@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AVAILABLE_MODES, type ModeInfo, type ModelInfo, type PermissionMode } from '../types';
+import {
+  AVAILABLE_MODES,
+  DROID_MODE_I18N_KEYS,
+  DROID_MODE_IDS,
+  type ModeInfo,
+  type ModelInfo,
+  type PermissionMode,
+} from '../types';
 import { useOmpRoles } from '../../../hooks/providers/useCliModels';
 
 const RELATIVE_INLINE_BLOCK_STYLE: React.CSSProperties = { position: 'relative', display: 'inline-block' };
@@ -36,6 +43,30 @@ function roleToModeInfo(role: ModelInfo): ModeInfo {
   };
 }
 
+/** Droid autonomy ladder, in the CLI's Shift+Tab order (Spec → Auto Off … High). */
+const DROID_MODE_ICONS: Record<string, string> = {
+  plan: 'codicon-tasklist',
+  default: 'codicon-comment-discussion',
+  acceptEdits: 'codicon-edit',
+  auto: 'codicon-shield',
+  bypassPermissions: 'codicon-zap',
+};
+
+const DROID_MODE_FALLBACK_TEXT: Record<string, { label: string; description: string }> = {
+  spec: { label: 'Spec', description: 'Plan first; read-only until you approve the spec' },
+  autoOff: { label: 'Auto (Off)', description: 'Approve every file edit and command' },
+  autoLow: { label: 'Auto (Low)', description: 'File edits and read-only commands run automatically' },
+  autoMedium: { label: 'Auto (Medium)', description: 'Reversible commands run automatically' },
+  autoHigh: { label: 'Auto (High)', description: 'All commands run automatically' },
+};
+
+const DROID_MODES: ModeInfo[] = DROID_MODE_IDS.map((id) => ({
+  id,
+  label: DROID_MODE_FALLBACK_TEXT[DROID_MODE_I18N_KEYS[id]].label,
+  icon: DROID_MODE_ICONS[id] ?? 'codicon-sparkle',
+  description: DROID_MODE_FALLBACK_TEXT[DROID_MODE_I18N_KEYS[id]].description,
+}));
+
 function getModeOptionStyle(disabled: boolean): React.CSSProperties {
   return {
     opacity: disabled ? 0.5 : 1,
@@ -65,6 +96,9 @@ export const ModeSelect = ({ value, onChange, provider, codexNativeAutoReviewAva
   const ompRoles = useOmpRoles();
 
   const modeOptions = useMemo(() => {
+    if (provider === 'droid') {
+      return DROID_MODES;
+    }
     if (provider === 'omp') {
       // OMP model-role modes: [Default, ...roles]. Roles are dynamic from the
       // listModels payload, falling back to static smol/slow/plan.
@@ -91,6 +125,12 @@ export const ModeSelect = ({ value, onChange, provider, codexNativeAutoReviewAva
 
   // Helper function to get translated mode text
   const getModeText = (modeId: PermissionMode, field: 'label' | 'shortLabel' | 'tooltip' | 'description') => {
+    if (provider === 'droid') {
+      const key = DROID_MODE_I18N_KEYS[modeId] ?? DROID_MODE_I18N_KEYS.default;
+      const fallback = DROID_MODE_FALLBACK_TEXT[key];
+      const textField = field === 'shortLabel' ? 'label' : field === 'tooltip' ? 'description' : field;
+      return t(`droidModes.${key}.${textField}`, { defaultValue: fallback[textField] });
+    }
     if (provider === 'codex') {
       const codexKey = `codexModes.${modeId}.${field}`;
       const fallbackKey = `modes.${modeId}.${field}`;

@@ -38,7 +38,7 @@ import { ClaudePlanUsageService } from './bridge/services/ClaudePlanUsageService
 import { DiffService } from './bridge/services/DiffService';
 import { PermissionIpcService } from './bridge/services/PermissionIpcService';
 import { ProviderStore } from './bridge/services/ProviderStore';
-import { SlashCommandService } from './bridge/services/SlashCommandService';
+import { SlashCommandService, parseDroidBuiltinCommand } from './bridge/services/SlashCommandService';
 import { SettingsStore } from './bridge/services/SettingsStore';
 import {
   formatActiveFileSelectionInfo,
@@ -50,6 +50,7 @@ import type { RuntimeProviderId } from './bridge/types';
 import { isRuntimeProvider } from './cli/cliTools';
 import { commonCliBinDirs } from './cli/cliBinDirs';
 import { CliStatusHandler } from './bridge/handlers/CliStatusHandler';
+import { CliStatusDetector } from './cli/CliStatusDetector';
 import { CliModelsHandler } from './bridge/handlers/CliModelsHandler';
 import { DshHostHandler } from './bridge/handlers/DshHostHandler';
 import { getDshSettings } from './bridge/services/DshSettingsStore';
@@ -330,6 +331,7 @@ export class BridgeServer {
           this._selectedModel = model;
           this._log.appendLine(`[BRIDGE] Model set to: ${this._selectedModel}`);
           this._updateStatusBarItem();
+          this._pushDroidModelLive(model);
         },
         syncProviderToDisk: (providers) => {
           this._syncProviderToDisk(providers);
@@ -661,6 +663,44 @@ export class BridgeServer {
 
   private _refreshSlashCommands(webview: vscode.Webview): void {
     this._slashCommands.refresh(webview);
+    if (this._activeProvider === 'droid') {
+      // Custom commands + skills come from the CLI; builtins are already posted.
+      this._sendDaemonRequest('droid_list_commands', 'droid.listCommands', {
+        sessionId: this._activeSessionId || undefined,
+        execPath: this._droidExecPath(),
+      }, webview);
+    }
+  }
+
+  /** Resolved `droid` binary for the SDK's ProcessTransport (cached detection). */
+  private _droidExecPath(): string | undefined {
+    try {
+      const status = CliStatusDetector.detectAll().droid;
+      return status?.installed ? status.path : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Model switches apply to the live Droid session right away (next LLM call)
+   * via session.updateSettings, so the CLI echoes settings_updated and the
+   * webview shows the new rate without waiting for the next send.
+   */
+  private _pushDroidModelLive(model: string): void {
+    if (this._activeProvider !== 'droid' || !model || !this._activeSessionId || !this._webview) {
+      return;
+    }
+    this._sendDaemonRequest('droid_set_model', 'droid.setModel', {
+      sessionId: this._activeSessionId,
+      model,
+      reasoningEffort: this.getReasoningEffort() || undefined,
+    }, this._webview);
+  }
+
+  /** Daemon requests whose output is consumed by the bridge, never streamed to chat. */
+  private _isDroidSideRequestEvent(event: string | undefined): boolean {
+    return event === 'droid_list_models' || event === 'droid_list_commands' || event === 'droid_set_model';
   }
 
   private _handleFrontendReady(webview: vscode.Webview): void {
@@ -729,6 +769,7 @@ export class BridgeServer {
       dsh: 'DSH',
       zcode: 'ZCode',
       minimax: 'MiniMax',
+      droid: 'Droid',
     };
     const provider = providerLabels[this._activeProvider] ?? this._activeProvider;
     const model = this._selectedModel ? ` ${this._selectedModel}` : '';
@@ -1074,7 +1115,7 @@ export class BridgeServer {
     // Keep the Grok ACP daemon's long-lived cwd inside the workspace: a deleted
     // or out-of-project directory would otherwise root the persistent runtime
     // outside the project (mirrors jetbrains PathUtils.guardWorkingDirectory).
-    if (activeProvider === 'grok' || activeProvider === 'zcode') {
+    if (activeProvider === 'grok' || activeProvider === 'zcode' || activeProvider === 'droid') {
       const guardedCwd = guardWorkingDirectory(params.cwd, this._workspacePath);
       if (guardedCwd !== null && guardedCwd !== params.cwd) {
         this._log.appendLine(`[BRIDGE] ${activeProvider} cwd guard: ${params.cwd} -> ${guardedCwd}`);
@@ -1083,6 +1124,9 @@ export class BridgeServer {
     }
 
     // Map webview event names → daemon method names
+    const persistentNs = activeProvider === 'grok' || activeProvider === 'zcode' || activeProvider === 'droid'
+      ? activeProvider
+      : 'claude';
     const METHOD_MAP: Record<string, string> = {
       'send_message':                  `${activeProvider}.send`,
       // Claude has a dedicated multimodal send; Grok/Codex/etc. share `.send`
@@ -1094,16 +1138,16 @@ export class BridgeServer {
           : `${activeProvider}.send`,
       // Grok has a persistent ACP runtime with the same lifecycle commands as
       // Claude's persistent query runtime; route them to the grok namespace.
-      'preconnect':                    activeProvider === 'grok' ? 'grok.preconnect' : activeProvider === 'zcode' ? 'zcode.preconnect' : 'claude.preconnect',
+      'preconnect':                    `${persistentNs}.preconnect`,
       'abort':                         'abort',
-      'reset_runtime':                 activeProvider === 'grok' ? 'grok.resetRuntime' : activeProvider === 'zcode' ? 'zcode.resetRuntime' : 'claude.resetRuntime',
-      'get_context_usage':             activeProvider === 'grok' ? 'grok.getContextUsage' : activeProvider === 'zcode' ? 'zcode.getContextUsage' : 'claude.getContextUsage',
+      'reset_runtime':                 `${persistentNs}.resetRuntime`,
+      'get_context_usage':             `${persistentNs}.getContextUsage`,
       'rewind_files':                  'claude.rewindFiles',
       'get_dependency_status':         'status',
       'heartbeat':                     'heartbeat',
     };
 
-    const method = METHOD_MAP[event];
+    let method = METHOD_MAP[event];
     if (!method) {
       this._log.appendLine(`[BRIDGE] No method mapping for event: ${event}`);
       return;
@@ -1152,6 +1196,12 @@ export class BridgeServer {
       if (activeProvider === 'codex') {
         params.sandboxMode = params.sandboxMode ?? this.getCodexSandboxMode();
       }
+      if (activeProvider === 'droid') {
+        params.execPath = params.execPath ?? this._droidExecPath();
+        if (params.reasoningEffort === undefined && this.getReasoningEffort()) {
+          params.reasoningEffort = this.getReasoningEffort();
+        }
+      }
       if (activeProvider === 'dsh') {
         // DSH connection settings ride each send as explicit params — the
         // long-lived daemon never mutates process.env per request.
@@ -1173,8 +1223,21 @@ export class BridgeServer {
           ? params.message
           : '';
 
+    // Droid builtins map to SDK calls; custom /commands and /skills are left as
+    // prompt text because the CLI expands them natively.
+    const droidBuiltin = activeProvider === 'droid'
+      && (event === 'send_message' || event === 'send_message_with_attachments')
+      && typeof params.text === 'string'
+      ? parseDroidBuiltinCommand(params.text)
+      : null;
+    if (droidBuiltin) {
+      method = 'droid.command';
+      params.command = droidBuiltin.command;
+      params.args = droidBuiltin.args;
+    }
+
     // Expand skill commands: /skill-name [args] → SKILL.md body with $ARGUMENTS substituted
-    if (params.text?.startsWith('/')) {
+    if (activeProvider !== 'droid' && params.text?.startsWith('/')) {
       const expanded = this._slashCommands.expandSkillCommand(params.text);
       if (expanded !== null) {
         params.text = expanded;
@@ -1234,7 +1297,7 @@ export class BridgeServer {
    */
   private _pushPermissionModeLive(mode: string): void {
     const provider = this.getActiveProvider();
-    if (provider !== 'claude' && provider !== 'grok' && provider !== 'zcode') {
+    if (provider !== 'claude' && provider !== 'grok' && provider !== 'zcode' && provider !== 'droid') {
       return;
     }
     const sessionId = this._activeSessionId || undefined;
@@ -1466,6 +1529,14 @@ export class BridgeServer {
         return;
       }
 
+      if (requestEvent === 'droid_list_models') {
+        const parsed = line.trim().startsWith('{') ? this._safeJson<any>(line.trim(), null) : null;
+        if (parsed && parsed.provider === 'droid' && Array.isArray(parsed.models)) {
+          this._callWebviewJson(webview, 'setCliModels', parsed);
+        }
+        return;
+      }
+
       if (requestEvent === 'rewind_files' && this._handleRewindLine(line, webview)) {
         return;
       }
@@ -1573,6 +1644,31 @@ export class BridgeServer {
           this._activeRuntimeEpoch = epoch;
           webview.postMessage({ type: 'js_eval', content: `window.__ccg_onSessionEpoch && window.__ccg_onSessionEpoch(${JSON.stringify(threadId)}, ${JSON.stringify(epoch)})` });
         }
+      } else if (line.startsWith('[DROID_SETTINGS] ')) {
+        const payload = line.slice('[DROID_SETTINGS] '.length).trim();
+        const settings = this._safeJson<any>(payload, null);
+        if (settings) {
+          if (typeof settings.modelId === 'string' && settings.modelId) {
+            this._selectedModel = settings.modelId;
+            this._updateStatusBarItem();
+          }
+          // Spec approval / Shift+Tab-equivalent changes made by the CLI itself.
+          if (typeof settings.permissionMode === 'string' && settings.permissionMode) {
+            void this.context.globalState.update('ccg.permission_mode', settings.permissionMode);
+          }
+          this._callWebviewArgs(webview, 'onDroidSettingsUpdated', [payload]);
+        }
+      } else if (line.startsWith('[DROID_COMMANDS] ')) {
+        const commands = this._slashCommands.setDroidDynamicCommands(
+          this._safeJson<unknown[]>(line.slice('[DROID_COMMANDS] '.length), []),
+        );
+        if (this._activeProvider === 'droid') {
+          webview.postMessage({ type: 'update_slash_commands', content: JSON.stringify(commands) });
+        }
+      } else if (line.startsWith('[DROID_RELOAD_SESSION] ')) {
+        // /rewind moved the conversation to a trimmed successor session.
+        const sessionId = line.slice('[DROID_RELOAD_SESSION] '.length).trim();
+        if (sessionId) this._historyService.loadSession(sessionId, 'droid', webview);
       } else if (line.startsWith('[MODEL] ')) {
         const model = line.slice('[MODEL] '.length).trim();
         if (model) this._lastModel.set(msg.id, model);
@@ -1856,6 +1952,15 @@ export class BridgeServer {
           this._cleanupRequest(msg.id);
           return;
         }
+        if (this._isDroidSideRequestEvent(requestEvent)) {
+          if (requestEvent === 'droid_list_models') {
+            this._callWebviewJson(webview, 'setCliModels', {
+              success: false, provider: 'droid', error: msg.error ?? 'Unknown error', models: [],
+            });
+          }
+          this._cleanupRequest(msg.id);
+          return;
+        }
         this._postSendError(webview, JSON.stringify(msg.error ?? 'Unknown error'), msg.id);
       } else {
         const sid = this._lastSessionId.get(msg.id);
@@ -1868,7 +1973,8 @@ export class BridgeServer {
         requestEvent === 'get_context_usage' ||
         requestEvent === 'rewind_files' ||
         requestEvent === 'heartbeat' ||
-        this._isMcpRequestEvent(requestEvent)
+        this._isMcpRequestEvent(requestEvent) ||
+        this._isDroidSideRequestEvent(requestEvent)
       ) {
         this._cleanupRequest(msg.id);
       } else {

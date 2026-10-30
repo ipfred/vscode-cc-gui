@@ -13,6 +13,7 @@ const STDIN_ENV_BY_PROVIDER = {
   dsh: 'DSH_USE_STDIN',
   minimax: 'MINIMAX_USE_STDIN',
   zcode: 'ZCODE_USE_STDIN',
+  droid: 'DROID_USE_STDIN',
 };
 
 /**

@@ -451,7 +451,9 @@
       "uninstallSuccess": "{{name}} 已卸载",
       "uninstallFailed": "卸载失败: {{error}}",
       "updating": "更新中...",
-      "updateSuccess": "{{name}} 更新成功"
+      "updateSuccess": "{{name}} 更新成功",
+      "droidSdkName": "Droid SDK",
+      "droidSdkDescription": "Droid AI 提供商所需。包含 @factory/droid-sdk。"
     },
     "usage": "使用统计",
     "usageDesc": "查看您的 Token 消耗、费用统计和使用趋势分析",
@@ -1041,6 +1043,10 @@
         "zcode": {
           "name": "ZCode",
           "description": "智谱 ZCode 桌面编码应用（GLM 模型）"
+        },
+        "droid": {
+          "name": "Droid",
+          "description": "Factory Droid 终端编程智能体，通过 Droid SDK 驱动"
         }
       },
       "installDialog": {
@@ -1079,6 +1085,17 @@
       "visibility": {
         "hide": "在切换菜单中隐藏",
         "show": "在切换菜单中显示"
+      },
+      "droidSdk": {
+        "title": "Droid SDK",
+        "hint": "与 Droid 对话所需（@factory/droid-sdk ≥ {{version}}）",
+        "belowMinimum": "已安装版本低于所需的 {{version}}，请更新",
+        "checking": "检测中…",
+        "install": "安装 SDK",
+        "update": "更新 SDK",
+        "installing": "安装中…",
+        "installSuccess": "Droid SDK 安装成功",
+        "installFailed": "Droid SDK 安装失败：{{error}}"
       }
     }
   },
@@ -2028,6 +2045,9 @@
     },
     "zcode": {
       "label": "ZCode"
+    },
+    "droid": {
+      "label": "Droid"
     }
   },
   "promptEnhancer": {
@@ -2127,6 +2147,18 @@
     "max": {
       "label": "max",
       "description": "最大推理深度"
+    },
+    "none": {
+      "label": "无",
+      "description": "不进行扩展推理"
+    },
+    "off": {
+      "label": "关闭",
+      "description": "关闭推理"
+    },
+    "minimal": {
+      "label": "极简",
+      "description": "最少推理，响应最快"
     }
   },
   "errorBoundary": {
@@ -2272,5 +2304,37 @@
     "user": {
       "description": "安装在 DSH 主目录中的自定义预设"
     }
+  },
+  "droidModes": {
+    "spec": {
+      "label": "Spec",
+      "description": "先规划；在你批准方案前保持只读"
+    },
+    "autoOff": {
+      "label": "Auto（关）",
+      "description": "每次文件编辑和命令都需批准"
+    },
+    "autoLow": {
+      "label": "Auto（低）",
+      "description": "自动执行文件编辑和只读命令"
+    },
+    "autoMedium": {
+      "label": "Auto（中）",
+      "description": "自动执行可撤销的命令"
+    },
+    "autoHigh": {
+      "label": "Auto（高）",
+      "description": "自动执行所有命令［谨慎使用］"
+    }
+  },
+  "droid": {
+    "modelSwitched": "模型已切换为 {{model}}（{{multiplier}}）",
+    "modelSwitchedNoRate": "模型已切换为 {{model}}",
+    "byok": "BYOK",
+    "modelDisabled": "不可用",
+    "refreshModels": "刷新模型列表",
+    "imagesNotSupported": "当前模型不支持图片",
+    "tokenRate": "{{multiplier}} Factory 令牌倍率",
+    "reasoningRange": "推理 {{range}}"
   }
 }

@@ -22,6 +22,7 @@ import { GrokHistoryReader } from './GrokHistoryReader';
 import { OmpHistoryReader } from './OmpHistoryReader';
 import { DshHistoryReader } from './DshHistoryReader';
 import { ZcodeHistoryReader } from './ZcodeHistoryReader';
+import { DroidHistoryReader } from './DroidHistoryReader';
 import { MiniMaxHistoryReader } from './MiniMaxHistoryReader';
 import { hasLocalHistorySupport, isCliOnlyProvider } from '../../cli/cliTools';
 
@@ -437,6 +438,10 @@ export class HistoryService {
       void this.loadZcodeHistoryData(webview);
       return;
     }
+    if (provider === 'droid') {
+      void this.loadDroidHistoryData(webview);
+      return;
+    }
     // Kimi / OpenCode / PI: chat works, but there is no local history reader yet.
     // Must not fall through to Claude's ~/.claude/projects scan — that incorrectly
     // shows Claude sessions under other CLI providers.
@@ -666,6 +671,51 @@ export class HistoryService {
       });
     }
   }
+  private async loadDroidHistoryData(webview: vscode.Webview): Promise<void> {
+    try {
+      const favorites = this.getFavorites();
+      const vscTitles: Record<string, string> = this.context.globalState.get('ccg.historyTitles') ?? {};
+      const reader = new DroidHistoryReader(this.context);
+      const result = await reader.getSessionsForProject(this.getWorkspacePath());
+      const toIso = (value: unknown): string => {
+        const ms = typeof value === 'number' && Number.isFinite(value) ? value : 0;
+        return ms > 0 ? new Date(ms).toISOString() : new Date(0).toISOString();
+      };
+      const sessions = result.sessions.map((session) => ({
+        sessionId: session.sessionId,
+        // Prefer user-renamed titles so list and chat header stay in sync.
+        title: vscTitles[String(session.sessionId)] || session.title,
+        messageCount: session.messageCount ?? 0,
+        lastTimestamp: toIso(session.lastTimestamp),
+        firstTimestamp: toIso(session.firstTimestamp),
+        cwd: session.cwd,
+        provider: 'droid',
+        isFavorited: Boolean(favorites[String(session.sessionId)]),
+        favoritedAt: favorites[String(session.sessionId)]?.favoritedAt,
+      }));
+      webview.postMessage({
+        type: 'history_data',
+        content: JSON.stringify({
+          success: result.success,
+          sessions,
+          total: sessions.length,
+          favorites,
+          error: result.error,
+        }),
+      });
+    } catch (error: any) {
+      this.log.appendLine(`[BRIDGE] loadDroidHistoryData error: ${error?.message || error}`);
+      webview.postMessage({
+        type: 'history_data',
+        content: JSON.stringify({
+          success: false,
+          sessions: [],
+          total: 0,
+          error: String(error?.message || error),
+        }),
+      });
+    }
+  }
 
   private loadGrokHistoryData(webview: vscode.Webview): void {
     try {
@@ -804,7 +854,7 @@ export class HistoryService {
       return;
     }
 
-    const knownProviders = new Set(['claude', 'codex', 'grok', 'kimi', 'opencode', 'pi', 'omp', 'dsh', 'zcode', 'minimax']);
+    const knownProviders = new Set(['claude', 'codex', 'grok', 'kimi', 'opencode', 'pi', 'omp', 'dsh', 'zcode', 'minimax', 'droid']);
     const normalizedProvider = provider && knownProviders.has(provider) ? provider : undefined;
     this.log.appendLine(`[BRIDGE] loadSession called: sessionId="${sessionId}" provider="${normalizedProvider ?? 'auto'}"`);
 
@@ -835,6 +885,21 @@ export class HistoryService {
           webview.postMessage({ type: 'session_messages', content: JSON.stringify(messages) });
         } catch (e: any) {
           this.log.appendLine(`[BRIDGE] loadSession zcode error: ${e?.message || e}`);
+          webview.postMessage({ type: 'session_messages', content: JSON.stringify([]) });
+        }
+      })();
+      return;
+    }
+
+    if (normalizedProvider === 'droid') {
+      void (async () => {
+        try {
+          const reader = new DroidHistoryReader(this.context);
+          const messages = await reader.getSessionMessages(sessionId, this.getWorkspacePath());
+          this.log.appendLine(`[BRIDGE] loadSession: loaded ${messages.length} messages from droid history`);
+          webview.postMessage({ type: 'session_messages', content: JSON.stringify(messages) });
+        } catch (e: any) {
+          this.log.appendLine(`[BRIDGE] loadSession droid error: ${e?.message || e}`);
           webview.postMessage({ type: 'session_messages', content: JSON.stringify([]) });
         }
       })();
@@ -980,6 +1045,20 @@ export class HistoryService {
         })();
         return;
       }
+      if (parsedProvider === 'droid') {
+        void (async () => {
+          try {
+            const deleted = await new DroidHistoryReader(this.context)
+              .deleteSession(String(sessionId || '').trim(), this.getWorkspacePath());
+            this.log.appendLine(`[HISTORY] Delete Droid session ${sessionId}: ${deleted ? 'ok' : 'not found'}`);
+            webview.postMessage({ type: 'delete_history_session_result', content: JSON.stringify({ success: deleted, sessionId }) });
+          } catch (e: any) {
+            this.log.appendLine(`[HISTORY] Delete Droid session ${sessionId} error: ${e?.message || e}`);
+            webview.postMessage({ type: 'delete_history_session_result', content: JSON.stringify({ success: false, sessionId, error: e?.message || String(e) }) });
+          }
+        })();
+        return;
+      }
       if (parsedProvider === 'omp') {
         // OMP sessions are plain jsonl files under ~/.omp/agent/sessions/.
         const deleted = new OmpHistoryReader().deleteSession(String(sessionId || '').trim(), this.getWorkspacePath());
@@ -1026,9 +1105,12 @@ export class HistoryService {
       // Provider-routed export (upstream HistoryExportService): CLI providers
       // whose sessions live outside the Claude/Codex stores read via their reader.
       const exportProvider = String(parsed.provider ?? '').trim();
-      if (exportProvider === 'zcode') {
+      if (exportProvider === 'zcode' || exportProvider === 'droid') {
         void (async () => {
-          const messages = await new ZcodeHistoryReader(this.context)
+          const reader = exportProvider === 'droid'
+            ? new DroidHistoryReader(this.context)
+            : new ZcodeHistoryReader(this.context);
+          const messages = await reader
             .getSessionMessages(sessionId, this.getWorkspacePath());
           if (!sessionId || messages.length === 0) {
             this.callWebviewJson(webview, 'onExportSessionData', { error: 'Session not found', sessionId });

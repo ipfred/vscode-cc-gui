@@ -94,7 +94,8 @@ export class SettingsHandler implements BridgeHandler {
     if (normalized === 'autoEdit') {
       normalized = provider === 'omp' ? 'default' : 'acceptEdits';
     }
-    if (normalized === 'auto' && provider !== 'claude' && provider !== 'codex') {
+    // Droid maps 'auto' to Auto (Medium) autonomy, so it keeps the native id.
+    if (normalized === 'auto' && provider !== 'claude' && provider !== 'codex' && provider !== 'droid') {
       return 'default';
     }
     return normalized;
@@ -114,7 +115,8 @@ export class SettingsHandler implements BridgeHandler {
           provider === 'omp' ||
           provider === 'dsh' ||
           provider === 'zcode' ||
-          provider === 'minimax'
+          provider === 'minimax' ||
+          provider === 'droid'
         ) {
           this.context.callbacks.setActiveProvider(provider);
         }

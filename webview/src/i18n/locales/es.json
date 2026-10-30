@@ -365,7 +365,9 @@
       "uninstallSuccess": "{{name}} ha sido desinstalado",
       "uninstallFailed": "Desinstalación fallida: {{error}}",
       "updating": "Actualizando...",
-      "updateSuccess": "{{name}} actualizado correctamente"
+      "updateSuccess": "{{name}} actualizado correctamente",
+      "droidSdkName": "Droid SDK",
+      "droidSdkDescription": "Necesario para el proveedor Droid. Incluye @factory/droid-sdk."
     },
     "usage": "Estadísticas de uso",
     "usageDesc": "Ver consumo de Token, estadísticas de costos y análisis de tendencias de uso",
@@ -832,6 +834,10 @@
         "zcode": {
           "name": "ZCode",
           "description": "Aplicación de escritorio de codificación ZCode de Zhipu con modelos GLM"
+        },
+        "droid": {
+          "name": "Droid",
+          "description": "Agente de programación en terminal Factory Droid, controlado mediante el Droid SDK"
         }
       },
       "installDialog": {
@@ -853,6 +859,17 @@
       "visibility": {
         "hide": "Ocultar en el selector de proveedor",
         "show": "Mostrar en el selector de proveedor"
+      },
+      "droidSdk": {
+        "title": "Droid SDK",
+        "hint": "Necesario para chatear con Droid (@factory/droid-sdk ≥ {{version}})",
+        "belowMinimum": "La versión instalada es inferior a la requerida {{version}}; actualízala",
+        "checking": "Comprobando…",
+        "install": "Instalar SDK",
+        "update": "Actualizar SDK",
+        "installing": "Instalando…",
+        "installSuccess": "Droid SDK instalado",
+        "installFailed": "Error al instalar Droid SDK: {{error}}"
       }
     }
   },
@@ -1687,6 +1704,9 @@
     },
     "zcode": {
       "label": "ZCode"
+    },
+    "droid": {
+      "label": "Droid"
     }
   },
   "promptEnhancer": {
@@ -1748,6 +1768,18 @@
     "xhigh": {
       "label": "Máximo",
       "description": "Profundidad máxima de razonamiento"
+    },
+    "none": {
+      "label": "Ninguno",
+      "description": "Sin razonamiento extendido"
+    },
+    "off": {
+      "label": "Desactivado",
+      "description": "Razonamiento desactivado"
+    },
+    "minimal": {
+      "label": "Mínimo",
+      "description": "Razonamiento mínimo para respuestas más rápidas"
     }
   },
   "errorBoundary": {
@@ -1852,5 +1884,37 @@
         }
       }
     }
+  },
+  "droidModes": {
+    "spec": {
+      "label": "Spec",
+      "description": "Primero planifica; solo lectura hasta que apruebes la especificación"
+    },
+    "autoOff": {
+      "label": "Auto (Desactivado)",
+      "description": "Aprueba cada edición de archivo y comando"
+    },
+    "autoLow": {
+      "label": "Auto (Bajo)",
+      "description": "Ediciones de archivos y comandos de solo lectura automáticos"
+    },
+    "autoMedium": {
+      "label": "Auto (Medio)",
+      "description": "Comandos reversibles automáticos"
+    },
+    "autoHigh": {
+      "label": "Auto (Alto)",
+      "description": "Todos los comandos automáticos [usar con precaución]"
+    }
+  },
+  "droid": {
+    "modelSwitched": "Modelo cambiado a {{model}} ({{multiplier}})",
+    "modelSwitchedNoRate": "Modelo cambiado a {{model}}",
+    "byok": "BYOK",
+    "modelDisabled": "No disponible",
+    "refreshModels": "Actualizar modelos",
+    "imagesNotSupported": "El modelo actual no admite imágenes",
+    "tokenRate": "Tarifa de tokens Factory {{multiplier}}",
+    "reasoningRange": "razonamiento {{range}}"
   }
 }

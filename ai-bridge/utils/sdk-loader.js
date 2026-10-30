@@ -28,6 +28,10 @@ const SDK_DEFINITIONS = {
     CODEX: {
         id: 'codex-sdk',
         npmPackage: '@openai/codex-sdk'
+    },
+    DROID: {
+        id: 'droid-sdk',
+        npmPackage: '@factory/droid-sdk'
     }
 };
 
@@ -361,9 +365,69 @@ export async function loadBedrockSdk() {
 }
 
 /**
- * Get the installation status of all SDKs
+ * Check whether the Factory Droid SDK is available.
  */
-export function getSdkStatus() {
+export function isDroidSdkAvailable() {
+    const { id, npmPackage } = SDK_DEFINITIONS.DROID;
+    return existsSync(getPackageDirFromRoot(getSdkRootDir(id), npmPackage));
+}
+
+/**
+ * Resolve the Droid SDK's Node entry (`@factory/droid-sdk/node`). The root
+ * export is the browser-safe daemon client; session/process APIs live only
+ * under the `./node` subpath.
+ */
+function resolveDroidNodeEntryUrl(packageDir) {
+    const pkg = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8'));
+    const nodeExport = pkg.exports?.['./node'];
+    const target = typeof nodeExport === 'string'
+        ? nodeExport
+        : nodeExport?.import?.default ?? nodeExport?.import ?? nodeExport?.default;
+    const entry = typeof target === 'string' ? join(packageDir, target) : join(packageDir, 'dist', 'node.mjs');
+    if (!existsSync(entry)) {
+        throw new Error(`Unable to resolve @factory/droid-sdk/node entry at ${entry}`);
+    }
+    return pathToFileURL(entry).href;
+}
+
+/**
+ * Dynamically load the Factory Droid SDK (Node entry).
+ * @returns {Promise<{createSession: Function, resumeSession: Function, ProcessTransport: Function, ...}>}
+ * @throws {Error} SDK_NOT_INSTALLED:droid when the SDK is not installed
+ */
+export async function loadDroidSdk() {
+    if (sdkCache.has('droid')) {
+        return sdkCache.get('droid');
+    }
+    if (loadingPromises.has('droid')) {
+        return loadingPromises.get('droid');
+    }
+
+    const { id, npmPackage } = SDK_DEFINITIONS.DROID;
+    const packageDir = getPackageDirFromRoot(getSdkRootDir(id), npmPackage);
+    if (!existsSync(packageDir)) {
+        throw new Error('SDK_NOT_INSTALLED:droid');
+    }
+
+    const loadPromise = (async () => {
+        try {
+            const sdk = await import(resolveDroidNodeEntryUrl(packageDir));
+            sdkCache.set('droid', sdk);
+            return sdk;
+        } catch (error) {
+            throw new Error(`Failed to load Droid SDK: ${error.message}`);
+        } finally {
+            loadingPromises.delete('droid');
+        }
+    })();
+
+    loadingPromises.set('droid', loadPromise);
+    return loadPromise;
+}
+
+/**
+ * Get the installation status of all SDKs
+ */export function getSdkStatus() {
     // Uses the same path resolution logic as DependencyManager
     const claudeInstalled = isClaudeSdkAvailable();
     const codexInstalled = isCodexSdkAvailable();
@@ -376,6 +440,10 @@ export function getSdkStatus() {
         codex: {
             installed: codexInstalled,
             path: getPackageDirFromRoot(getSdkRootDir('codex-sdk'), '@openai/codex-sdk')
+        },
+        droid: {
+            installed: isDroidSdkAvailable(),
+            path: getPackageDirFromRoot(getSdkRootDir('droid-sdk'), '@factory/droid-sdk')
         }
     };
 }
@@ -432,6 +500,13 @@ export function requireSdk(provider) {
         const error = new Error('Codex SDK not installed. Please install via Settings > Dependencies.');
         error.code = 'SDK_NOT_INSTALLED';
         error.provider = 'codex';
+        throw error;
+    }
+
+    if (provider === 'droid' && !isDroidSdkAvailable()) {
+        const error = new Error('Droid SDK not installed. Please install via Settings > Dependencies.');
+        error.code = 'SDK_NOT_INSTALLED';
+        error.provider = 'droid';
         throw error;
     }
 }

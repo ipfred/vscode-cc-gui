@@ -20,6 +20,7 @@ export type ModelVendor =
   | 'zhipu'
   | 'minimax'
   | 'zcode'
+  | 'droid'
   | 'xiaomi'
   | 'bailian'
   | 'longcat'
@@ -127,6 +128,8 @@ const PROVIDER_TO_VENDOR: Record<string, ModelVendor> = {
   dsh: 'deepseek',
   // Runtime CLI provider id (ProviderSelect, BlinkingLogo, CliSection)
   zcode: 'zcode',
+  // Factory Droid CLI (ProviderSelect, BlinkingLogo, CliSection)
+  droid: 'droid',
   openrouter: 'openrouter',
 };
 

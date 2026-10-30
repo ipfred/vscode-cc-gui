@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRef } from 'react';
 import type { ClaudeMessage, ClaudeContentBlock, ToolResultBlock } from '../types';
 import { MessageList } from './MessageList';
+import { addLocalNotice, clearLocalNotices } from '../utils/localNotices';
 
 // Mock MessageItem to keep this suite focused on list-level paging behaviour.
 vi.mock('./MessageItem', () => ({
@@ -202,5 +203,27 @@ describe('MessageList container behaviour', () => {
       />
     );
     expect(screen.getByTestId('waiting-indicator')).toBeTruthy();
+  });
+});
+
+describe('MessageList local notices', () => {
+  afterEach(() => {
+    cleanup();
+    clearLocalNotices();
+  });
+
+  it('renders a neutral notice between messages by timestamp without touching the message list', () => {
+    const messages = [
+      { type: 'user', content: 'first', id: 'a', timestamp: '2026-01-01T00:00:00.000Z' },
+      { type: 'assistant', content: 'second', id: 'b', timestamp: '2026-01-01T00:00:10.000Z' },
+      { type: 'user', content: 'third', id: 'c', timestamp: '2026-01-01T00:00:30.000Z' },
+    ] as unknown as ClaudeMessage[];
+    addLocalNotice('Model switched to Opus 5.5 (1.6×)', Date.parse('2026-01-01T00:00:20.000Z'));
+
+    const { container } = renderList(messages);
+    const order = Array.from(container.querySelectorAll('[data-testid="message-item"], [data-testid="local-notice"]'))
+      .map((el) => el.textContent);
+    expect(order).toEqual(['first', 'second', 'Model switched to Opus 5.5 (1.6×)', 'third']);
+    expect(screen.getAllByTestId('message-item')).toHaveLength(3);
   });
 });

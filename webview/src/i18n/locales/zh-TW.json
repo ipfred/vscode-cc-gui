@@ -365,7 +365,9 @@
       "uninstallSuccess": "{{name}} 已解除安裝",
       "uninstallFailed": "解除安裝失敗: {{error}}",
       "updating": "更新中...",
-      "updateSuccess": "{{name}} 更新成功"
+      "updateSuccess": "{{name}} 更新成功",
+      "droidSdkName": "Droid SDK",
+      "droidSdkDescription": "Droid AI 提供者所需。包含 @factory/droid-sdk。"
     },
     "usage": "使用統計",
     "usageDesc": "檢視您的 Token 消耗、費用統計和使用趨勢分析",
@@ -841,6 +843,10 @@
         "zcode": {
           "name": "ZCode",
           "description": "智譜 ZCode 桌面編碼應用（GLM 模型）"
+        },
+        "droid": {
+          "name": "Droid",
+          "description": "Factory Droid 終端程式設計代理，透過 Droid SDK 驅動"
         }
       },
       "installDialog": {
@@ -879,6 +885,17 @@
       "visibility": {
         "hide": "在切換選單中隱藏",
         "show": "在切換選單中顯示"
+      },
+      "droidSdk": {
+        "title": "Droid SDK",
+        "hint": "與 Droid 對話所需（@factory/droid-sdk ≥ {{version}}）",
+        "belowMinimum": "已安裝版本低於所需的 {{version}}，請更新",
+        "checking": "檢測中…",
+        "install": "安裝 SDK",
+        "update": "更新 SDK",
+        "installing": "安裝中…",
+        "installSuccess": "Droid SDK 安裝成功",
+        "installFailed": "Droid SDK 安裝失敗：{{error}}"
       }
     }
   },
@@ -1728,6 +1745,9 @@
     },
     "zcode": {
       "label": "ZCode"
+    },
+    "droid": {
+      "label": "Droid"
     }
   },
   "promptEnhancer": {
@@ -1789,6 +1809,18 @@
     "xhigh": {
       "label": "最多",
       "description": "最深推理，最高精度"
+    },
+    "none": {
+      "label": "無",
+      "description": "不進行延伸推理"
+    },
+    "off": {
+      "label": "關閉",
+      "description": "關閉推理"
+    },
+    "minimal": {
+      "label": "極簡",
+      "description": "最少推理，回應最快"
     }
   },
   "errorBoundary": {
@@ -1930,5 +1962,37 @@
     "user": {
       "description": "安裝在 DSH 主目錄中的自訂預設"
     }
+  },
+  "droidModes": {
+    "spec": {
+      "label": "Spec",
+      "description": "先規劃；在你核准方案前保持唯讀"
+    },
+    "autoOff": {
+      "label": "Auto（關）",
+      "description": "每次檔案編輯與指令都需核准"
+    },
+    "autoLow": {
+      "label": "Auto（低）",
+      "description": "自動執行檔案編輯與唯讀指令"
+    },
+    "autoMedium": {
+      "label": "Auto（中）",
+      "description": "自動執行可復原的指令"
+    },
+    "autoHigh": {
+      "label": "Auto（高）",
+      "description": "自動執行所有指令［謹慎使用］"
+    }
+  },
+  "droid": {
+    "modelSwitched": "模型已切換為 {{model}}（{{multiplier}}）",
+    "modelSwitchedNoRate": "模型已切換為 {{model}}",
+    "byok": "BYOK",
+    "modelDisabled": "無法使用",
+    "refreshModels": "重新整理模型清單",
+    "imagesNotSupported": "目前模型不支援圖片",
+    "tokenRate": "{{multiplier}} Factory 權杖倍率",
+    "reasoningRange": "推理 {{range}}"
   }
 }

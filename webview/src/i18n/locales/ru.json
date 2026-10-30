@@ -365,7 +365,9 @@
       "uninstallSuccess": "{{name}} удалён",
       "uninstallFailed": "Ошибка удаления: {{error}}",
       "updating": "Обновление...",
-      "updateSuccess": "{{name}} успешно обновлён"
+      "updateSuccess": "{{name}} успешно обновлён",
+      "droidSdkName": "Droid SDK",
+      "droidSdkDescription": "Требуется для провайдера Droid. Включает @factory/droid-sdk."
     },
     "usage": "Статистика использования",
     "usageDesc": "Просмотр потребления токенов, статистики затрат и анализа тенденций",
@@ -844,6 +846,10 @@
         "zcode": {
           "name": "ZCode",
           "description": "Десктопное кодинг-приложение Zhipu ZCode с моделями GLM"
+        },
+        "droid": {
+          "name": "Droid",
+          "description": "Терминальный агент для программирования Factory Droid, работающий через Droid SDK"
         }
       },
       "installDialog": {
@@ -865,6 +871,17 @@
       "visibility": {
         "hide": "Скрыть в меню выбора провайдера",
         "show": "Показать в меню выбора провайдера"
+      },
+      "droidSdk": {
+        "title": "Droid SDK",
+        "hint": "Требуется для работы с Droid (@factory/droid-sdk ≥ {{version}})",
+        "belowMinimum": "Установленная версия ниже требуемой {{version}}; обновите",
+        "checking": "Проверка…",
+        "install": "Установить SDK",
+        "update": "Обновить SDK",
+        "installing": "Установка…",
+        "installSuccess": "Droid SDK установлен",
+        "installFailed": "Не удалось установить Droid SDK: {{error}}"
       }
     }
   },
@@ -1713,6 +1730,9 @@
     },
     "zcode": {
       "label": "ZCode"
+    },
+    "droid": {
+      "label": "Droid"
     }
   },
   "promptEnhancer": {
@@ -1774,6 +1794,18 @@
     "xhigh": {
       "label": "Максимальная",
       "description": "Максимальная глубина рассуждений"
+    },
+    "none": {
+      "label": "Нет",
+      "description": "Без расширенных рассуждений"
+    },
+    "off": {
+      "label": "Выкл.",
+      "description": "Рассуждения отключены"
+    },
+    "minimal": {
+      "label": "Минимальный",
+      "description": "Минимальные рассуждения для самых быстрых ответов"
     }
   },
   "errorBoundary": {
@@ -1878,5 +1910,37 @@
         }
       }
     }
+  },
+  "droidModes": {
+    "spec": {
+      "label": "Spec",
+      "description": "Сначала план; только чтение до утверждения спецификации"
+    },
+    "autoOff": {
+      "label": "Auto (Выкл.)",
+      "description": "Подтверждать каждое изменение файла и команду"
+    },
+    "autoLow": {
+      "label": "Auto (Низкий)",
+      "description": "Изменения файлов и команды только для чтения выполняются автоматически"
+    },
+    "autoMedium": {
+      "label": "Auto (Средний)",
+      "description": "Обратимые команды выполняются автоматически"
+    },
+    "autoHigh": {
+      "label": "Auto (Высокий)",
+      "description": "Все команды выполняются автоматически [используйте осторожно]"
+    }
+  },
+  "droid": {
+    "modelSwitched": "Модель переключена на {{model}} ({{multiplier}})",
+    "modelSwitchedNoRate": "Модель переключена на {{model}}",
+    "byok": "BYOK",
+    "modelDisabled": "Недоступно",
+    "refreshModels": "Обновить модели",
+    "imagesNotSupported": "Текущая модель не поддерживает изображения",
+    "tokenRate": "Тариф токенов Factory {{multiplier}}",
+    "reasoningRange": "рассуждение {{range}}"
   }
 }

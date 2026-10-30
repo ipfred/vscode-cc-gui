@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useRef, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { Fragment, memo, useState, useEffect, useRef, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
 import type { TFunction } from 'i18next';
 import type { ClaudeMessage, ClaudeContentBlock, ToolResultBlock } from '../types';
 import { getMessageKey } from '../utils/messageUtils';
@@ -7,6 +7,16 @@ import WaitingIndicator from './WaitingIndicator';
 import { ContextMenu } from './ContextMenu';
 import { useContextMenu, copySelection } from '../hooks/useContextMenu.js';
 import type { MessageListRevealHandle } from './ConversationSearch/types';
+import { placeLocalNotices, useLocalNotices, type LocalNotice } from '../utils/localNotices';
+
+function renderLocalNotices(notices: LocalNotice[] | undefined) {
+  if (!notices || notices.length === 0) return null;
+  return notices.map((notice) => (
+    <div key={notice.id} className="local-notice" data-testid="local-notice" role="status">
+      {notice.text}
+    </div>
+  ));
+}
 
 /** Always render at least this many recent messages. Earlier messages are collapsed. */
 const VISIBLE_MESSAGE_WINDOW = 15;
@@ -138,6 +148,11 @@ export const MessageList = memo(forwardRef<MessageListRevealHandle, MessageListP
     () => (shouldCollapse ? messages.slice(collapsedCount) : messages),
     [messages, shouldCollapse, collapsedCount]
   );
+  const localNotices = useLocalNotices();
+  const noticePlacement = useMemo(
+    () => placeLocalNotices(messages, localNotices),
+    [messages, localNotices]
+  );
 
   return (
     <div onContextMenu={handleMessageContextMenu}>
@@ -166,27 +181,31 @@ export const MessageList = memo(forwardRef<MessageListRevealHandle, MessageListP
         const messageKey = getMessageKey(message, messageIndex);
         const toolResultSignature = getMessageToolResultSignature(message, messageIndex, getContentBlocks, findToolResult);
 
+        const noticesBefore = noticePlacement.get(messageIndex);
         return (
-          <MessageItem
-            key={messageKey}
-            message={message}
-            messageIndex={messageIndex}
-            messageKey={messageKey}
-            isLast={messageIndex === messages.length - 1}
-            streamingActive={streamingActive}
-            isThinking={isThinking}
-            t={t}
-            getMessageText={getMessageText}
-            getContentBlocks={getContentBlocks}
-            findToolResult={findToolResult}
-            extractMarkdownContent={extractMarkdownContent}
-            onNodeRef={onMessageNodeRef}
-            onNavigateToProviderSettings={onNavigateToProviderSettings}
-            onNavigateToDependencySettings={onNavigateToDependencySettings}
-            toolResultSignature={toolResultSignature}
-          />
+          <Fragment key={messageKey}>
+            {renderLocalNotices(noticesBefore)}
+            <MessageItem
+              message={message}
+              messageIndex={messageIndex}
+              messageKey={messageKey}
+              isLast={messageIndex === messages.length - 1}
+              streamingActive={streamingActive}
+              isThinking={isThinking}
+              t={t}
+              getMessageText={getMessageText}
+              getContentBlocks={getContentBlocks}
+              findToolResult={findToolResult}
+              extractMarkdownContent={extractMarkdownContent}
+              onNodeRef={onMessageNodeRef}
+              onNavigateToProviderSettings={onNavigateToProviderSettings}
+              onNavigateToDependencySettings={onNavigateToDependencySettings}
+              toolResultSignature={toolResultSignature}
+            />
+          </Fragment>
         );
       })}
+      {renderLocalNotices(noticePlacement.get(messages.length))}
 
       {/* Loading indicator */}
       {loading && <WaitingIndicator startTime={loadingStartTime ?? undefined} />}
