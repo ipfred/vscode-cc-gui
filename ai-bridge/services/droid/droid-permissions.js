@@ -56,7 +56,13 @@ export async function resolveDroidPermission(params, deps) {
     || item?.details?.type === 'exit_spec_mode');
   if (specExit) {
     const plan = specExit.details?.plan ?? specExit.toolUse?.input?.plan ?? '';
-    const result = await deps.requestPlanApproval({ plan: String(plan || '') });
+    const result = await deps.requestPlanApproval({
+      plan: String(plan || ''),
+      ...(typeof specExit.details?.title === 'string' ? { title: specExit.details.title } : {}),
+      ...(Number.isFinite(specExit.details?.contextSavingsPercent)
+        ? { contextSavingsPercent: specExit.details.contextSavingsPercent }
+        : {}),
+    });
     if (!result?.approved) return pickOfferedOutcome(options, ['cancel']);
     return pickOfferedOutcome(options, planApprovalOutcomes(result.targetMode));
   }

@@ -638,10 +638,17 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
       editableWrapperRef,
     });
 
+    // Dropdowns (e.g. the model search box) render inside this container;
+    // refocusing the editor on their clicks would steal the caret from them.
+    const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+      if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select')) return;
+      focusInput();
+    };
+
     return (
       <div
         className={`chat-input-box ${isResizingInputBox ? 'is-resizing' : ''}`}
-        onClick={focusInput}
+        onClick={handleContainerClick}
         ref={containerRef}
         style={containerStyle}
         onMouseOver={handleMouseOver}

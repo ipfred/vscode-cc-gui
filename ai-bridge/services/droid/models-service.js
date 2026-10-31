@@ -23,7 +23,7 @@ const PROVIDER_GROUPS = {
 export function modelGroup(model) {
   if (model?.isCustom) return 'BYOK';
   if (model?.kind === 'router' || model?.id === 'auto') return 'Auto';
-  return PROVIDER_GROUPS[String(model?.modelProvider || '').toLowerCase()] || 'Factory';
+  return PROVIDER_GROUPS[String(model?.modelProvider || '').toLowerCase()] || 'Droid Core';
 }
 
 /** 1.6 → "1.6×", 0.04 → "0.04×", 12 → "12×". */

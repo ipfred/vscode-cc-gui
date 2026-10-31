@@ -345,8 +345,8 @@ export class BridgeServer {
         sendDaemonRequest: (event, method, params, webview) => {
           this._sendDaemonRequest(event, method, params, webview);
         },
-        pushPermissionModeLive: (mode) => {
-          this._pushPermissionModeLive(mode);
+        pushPermissionModeLive: (mode, specMode) => {
+          this._pushPermissionModeLive(mode, specMode);
         },
         loadHistoryData: (provider, webview) => {
           this._historyService.loadHistoryData(provider, webview);
@@ -1295,7 +1295,7 @@ export class BridgeServer {
    * Codex rebuilds thread options per turn, so only Claude and Grok (persistent
    * ACP runtime) and ZCode (persistent app-server) are hot-swapped.
    */
-  private _pushPermissionModeLive(mode: string): void {
+  private _pushPermissionModeLive(mode: string, specMode?: boolean): void {
     const provider = this.getActiveProvider();
     if (provider !== 'claude' && provider !== 'grok' && provider !== 'zcode' && provider !== 'droid') {
       return;
@@ -1314,6 +1314,7 @@ export class BridgeServer {
     }
     const id = String(++this._reqId);
     const params: Record<string, unknown> = { permissionMode: mode };
+    if (typeof specMode === 'boolean') params.specMode = specMode;
     if (sessionId) params.sessionId = sessionId;
     if (runtimeSessionEpoch) params.runtimeSessionEpoch = runtimeSessionEpoch;
     const msg = JSON.stringify({ id, method: `${provider}.setPermissionMode`, params }) + '\n';

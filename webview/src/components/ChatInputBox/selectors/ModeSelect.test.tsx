@@ -150,21 +150,21 @@ describe('ModeSelect', () => {
     }
   });
 
-  it('offers the five Droid modes in Shift+Tab order with Droid labels', () => {
-    expect(openAndGetOptionIds('droid')).toEqual(['plan', 'default', 'acceptEdits', 'auto', 'bypassPermissions']);
+  it('offers only the four Droid autonomy levels (Spec is a separate toggle) with Droid labels', () => {
+    expect(openAndGetOptionIds('droid')).toEqual(['default', 'acceptEdits', 'auto', 'bypassPermissions']);
     cleanup();
 
     const onChange = vi.fn();
     render(<ModeSelect value="auto" onChange={onChange} provider="droid" />);
     expect(screen.getByRole('button').textContent).toContain('Auto (Medium)');
     fireEvent.click(screen.getByRole('button'));
-    expect(screen.getByText('Spec')).toBeTruthy();
+    expect(screen.queryByText('Spec')).toBeNull();
     expect(screen.getByText('Auto (Off)')).toBeTruthy();
     expect(screen.getByText('Auto (Low)')).toBeTruthy();
     expect(screen.getByText('Auto (High)')).toBeTruthy();
 
-    fireEvent.click(screen.getByTestId('mode-option-plan'));
-    expect(onChange).toHaveBeenCalledWith('plan');
+    fireEvent.click(screen.getByTestId('mode-option-bypassPermissions'));
+    expect(onChange).toHaveBeenCalledWith('bypassPermissions');
   });
 
   it('shows a compact short label on the trigger and the full label in the menu', () => {

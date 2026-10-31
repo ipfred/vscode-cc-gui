@@ -229,9 +229,14 @@ export async function requestAskUserQuestionAnswers(input) {
 /**
  * Request plan approval via file system communication with Java process.
  * @param {Object} input - ExitPlanMode tool parameters (contains allowedPrompts)
+ * @param {Object} [options]
+ * @param {() => boolean} [options.isCancelled] - When provided the request waits
+ *   without a time limit and only ends on a user response or when this returns
+ *   true (the turn was interrupted). Without it the safety-net timeout applies.
  * @returns {Promise<Object>} - { approved: boolean, targetMode: string, message?: string }
  */
-export async function requestPlanApproval(input) {
+export async function requestPlanApproval(input, options = {}) {
+  const isCancelled = typeof options?.isCancelled === 'function' ? options.isCancelled : null;
   const requestStartTime = Date.now();
   debugLog('PLAN_APPROVAL_START', 'Requesting plan approval', describeInputForLog(input));
 
@@ -252,6 +257,8 @@ export async function requestPlanApproval(input) {
       requestId,
       toolName: 'ExitPlanMode',
       plan,
+      ...(typeof input?.title === 'string' && input.title ? { title: input.title } : {}),
+      ...(Number.isFinite(input?.contextSavingsPercent) ? { contextSavingsPercent: input.contextSavingsPercent } : {}),
       allowedPrompts,
       timestamp: new Date().toISOString(),
       cwd: process.cwd(),
@@ -274,15 +281,30 @@ export async function requestPlanApproval(input) {
       return { approved: false, message: 'Failed to write plan approval request' };
     }
 
-    const timeout = PERMISSION_REQUEST_SAFETY_NET_MS;
+    const timeout = isCancelled ? Infinity : PERMISSION_REQUEST_SAFETY_NET_MS;
     let pollCount = 0;
     const pollInterval = 100;
 
-    debugLog('PLAN_APPROVAL_WAIT_START', `Starting to wait for plan approval response (timeout: ${timeout}ms)`);
+    // Writing a denial lets the extension close the dialog it is still showing.
+    const closeDialogWithDenial = (message) => {
+      try {
+        writeFileSync(responseFile, JSON.stringify({ approved: false, message }));
+      } catch (writeError) {
+        debugLog('PLAN_APPROVAL_CLOSE_ERROR', `Failed to write denial response: ${errorClass(writeError)}`);
+      }
+    };
+
+    debugLog('PLAN_APPROVAL_WAIT_START', `Starting to wait for plan approval response (timeout: ${isCancelled ? 'none' : `${timeout}ms`})`);
 
     while (Date.now() - requestStartTime < timeout) {
       await new Promise(resolve => setTimeout(resolve, pollInterval));
       pollCount++;
+
+      if (isCancelled && !existsSync(responseFile) && isCancelled()) {
+        debugLog('PLAN_APPROVAL_CANCELLED', 'Plan approval cancelled before the user answered');
+        closeDialogWithDenial('Plan approval cancelled');
+        return { approved: false, message: 'Plan approval cancelled' };
+      }
 
       if (pollCount % 100 === 0) {
         const elapsed = Date.now() - requestStartTime;
@@ -323,6 +345,7 @@ export async function requestPlanApproval(input) {
 
     const elapsed = Date.now() - requestStartTime;
     debugLog('PLAN_APPROVAL_TIMEOUT', `Timeout waiting for plan approval`, { elapsed: `${elapsed}ms`, timeout: `${timeout}ms` });
+    closeDialogWithDenial('Plan approval timed out');
     return { approved: false, message: 'Plan approval timed out' };
 
   } catch (error) {

@@ -22,17 +22,26 @@ function fakeRuntime(settings) {
   return { runtime: { session }, calls };
 }
 
-test('mode changes map to autonomy updates and spec entry', async () => {
+test('Spec is independent of the autonomy level', async () => {
   const { runtime, calls } = fakeRuntime({ modelId: 'm', interactionMode: 'auto', autonomyLevel: 'off' });
   await applySettings(runtime, { permissionMode: 'auto' });
   await applySettings(runtime, { permissionMode: 'auto' });
-  await applySettings(runtime, { permissionMode: 'plan' });
+  await applySettings(runtime, { permissionMode: 'auto', specMode: true });
+  // Changing the level while in Spec keeps Spec on.
   await applySettings(runtime, { permissionMode: 'bypassPermissions' });
+  await applySettings(runtime, { permissionMode: 'bypassPermissions', specMode: false });
   assert.deepEqual(calls, [
     ['update', { autonomyLevel: 'medium' }],
     ['enterSpec'],
-    ['update', { interactionMode: 'auto', autonomyLevel: 'high' }],
+    ['update', { autonomyLevel: 'high' }],
+    ['update', { interactionMode: 'auto' }],
   ]);
+});
+
+test('the legacy plan mode enters Spec without touching the autonomy level', async () => {
+  const { runtime, calls } = fakeRuntime({ modelId: 'm', interactionMode: 'auto', autonomyLevel: 'low' });
+  await applySettings(runtime, { permissionMode: 'plan' });
+  assert.deepEqual(calls, [['enterSpec']]);
 });
 
 test('model switch is skipped for the default placeholder and retried without a rejected effort', async () => {

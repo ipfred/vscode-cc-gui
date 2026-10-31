@@ -64,8 +64,12 @@ export function useCachedCliModels(providerId: string): ModelInfo[] {
   return useSyncExternalStore(subscribeModels, () => modelsCache[providerId] ?? NO_MODELS);
 }
 
-/** Minimum interval between automatic (dropdown-open) Droid catalog refreshes. */
-export const CLI_MODELS_REFRESH_THROTTLE_MS = 60_000;
+/**
+ * Minimum interval between automatic (dropdown-open) Droid catalog refreshes.
+ * Plan / BYOK changes are rare, and users can refresh manually from the
+ * dropdown, so the automatic refresh only runs about once a day.
+ */
+export const CLI_MODELS_REFRESH_THROTTLE_MS = 24 * 60 * 60 * 1000;
 
 /** Java may never answer get_cli_models — don't leave the spinner on forever. */
 const CLI_MODELS_TIMEOUT_MS = 15_000;
@@ -247,19 +251,6 @@ export function useCliModels(currentProvider: string) {
 
     beginLoad(currentProvider);
   }, [currentProvider, modelsByProvider, beginLoad]);
-
-  // Droid's catalog changes with plan/BYOK config, so re-fetch whenever Droid
-  // becomes the active provider again (the effect above only loads once).
-  const previousProviderRef = useRef<string | null>(null);
-  const loadedProvidersRef = useRef(modelsByProvider);
-  loadedProvidersRef.current = modelsByProvider;
-  useEffect(() => {
-    const previous = previousProviderRef.current;
-    previousProviderRef.current = currentProvider;
-    if (currentProvider !== 'droid' || previous === null || previous === 'droid') return;
-    if (!loadedProvidersRef.current.droid?.length) return;
-    beginLoad('droid', true);
-  }, [currentProvider, beginLoad]);
 
   const refreshCliModels = useCallback((providerId: string) => {
     if (!isCliOnlyProvider(providerId)) return;

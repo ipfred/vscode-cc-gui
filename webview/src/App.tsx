@@ -25,6 +25,7 @@ import {
   PLAN_COMMANDS,
   CONTEXT_COMMANDS,
 } from './hooks/useMessageSender';
+import { usePlanHandoff } from './hooks/usePlanHandoff';
 import { applyDiffTheme, getStoredDiffTheme } from './utils/diffTheme';
 import { detectIdeThemeFromDom } from './utils/detectIdeTheme';
 import type { Attachment, ChatInputBoxHandle, PermissionMode } from './components/ChatInputBox/types';
@@ -381,6 +382,18 @@ const App = () => {
     autoOpenFileEnabled,
   });
 
+  // ── Spec "New chat" approval ──
+  const applyPlanHandoffMode = useCallback(
+    (mode: string) => handleModeSelect(mode as PermissionMode),
+    [handleModeSelect],
+  );
+  const { startPlanHandoff } = usePlanHandoff({
+    loading,
+    forceCreateNewSession,
+    executeMessage,
+    applyMode: applyPlanHandoffMode,
+  });
+
   // ── Message queue ──
   const {
     queue: messageQueue,
@@ -611,7 +624,14 @@ const App = () => {
         onRewindCancel={handleRewindCancel}
         currentProvider={currentProvider}
         permissionDialogTimeoutSeconds={permissionDialogTimeoutSeconds}
-        onPlanApprovalModeChange={(mode) => handleModeSelect(mode as PermissionMode)}
+        onPlanApprovalModeChange={applyPlanHandoffMode}
+        currentPermissionMode={permissionMode}
+        contextUsage={usagePercentage > 0 ? {
+          percentage: usagePercentage,
+          usedTokens: usageUsedTokens,
+          maxTokens: usageMaxTokens,
+        } : undefined}
+        onPlanApprovalNewChat={currentProvider === 'droid' ? startPlanHandoff : undefined}
       />
     </>
   );

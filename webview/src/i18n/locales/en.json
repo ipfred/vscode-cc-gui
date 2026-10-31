@@ -1221,7 +1221,22 @@
     "reject": "Reject",
     "toApprove": "to approve",
     "toReject": "to reject",
-    "timeoutWarning": "Please make a choice soon, dialog will close in {{seconds}} seconds"
+    "timeoutWarning": "Please make a choice soon, dialog will close in {{seconds}} seconds",
+    "tab": "Plan",
+    "planFallbackTitle": "Spec",
+    "openInEditor": "Open in VS Code editor",
+    "emptyPlan": "The plan has no content to preview.",
+    "autonomy": "Autonomy",
+    "autonomyTooltip": "{{level}}. Click to change how much can run without asking",
+    "keepIterating": "Keep iterating",
+    "approveSpec": "Approve Spec",
+    "thisChat": "This chat",
+    "thisChatDesc": "Keep the current conversation",
+    "newChat": "New chat",
+    "newChatDesc": "Start fresh with only the approved spec",
+    "contextUsed": "{{percent}}% context used",
+    "contextUsedTokens": "{{used}} / {{max}} used ({{percent}}%)",
+    "contextSavings": "({{percent}}% context savings)"
   },
   "toast": {
     "switchSuccess": "Switched successfully",

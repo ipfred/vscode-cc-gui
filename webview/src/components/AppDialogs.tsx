@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import ConfirmDialog from './ConfirmDialog';
 import PermissionDialog from './PermissionDialog';
 import AskUserQuestionDialog from './AskUserQuestionDialog';
-import PlanApprovalDialog from './PlanApprovalDialog';
+import PlanApprovalDialog, { type PlanApprovalContextUsage } from './PlanApprovalDialog';
 import RewindDialog from './RewindDialog';
 import RewindSelectDialog, { type RewindableMessage } from './RewindSelectDialog';
 import ChangelogDialog from './ChangelogDialog';
@@ -65,6 +65,12 @@ export interface AppDialogsProps {
   permissionDialogTimeoutSeconds?: number;
   /** Apply the execution mode chosen while approving a Claude plan. */
   onPlanApprovalModeChange?: (mode: string) => void;
+  /** Autonomy level currently selected in the toolbar; the plan dialog starts on it. */
+  currentPermissionMode?: string;
+  /** Current chat's context consumption, shown in the plan approval menu. */
+  contextUsage?: PlanApprovalContextUsage;
+  /** When set, plan approval offers "New chat" and calls this with the approved plan. */
+  onPlanApprovalNewChat?: (plan: string, targetMode: string) => void;
 }
 
 /**
@@ -88,6 +94,9 @@ export const AppDialogs = ({
   currentProvider,
   permissionDialogTimeoutSeconds = DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS,
   onPlanApprovalModeChange,
+  currentPermissionMode,
+  contextUsage,
+  onPlanApprovalNewChat,
 }: AppDialogsProps) => {
   const { t } = useTranslation();
   const {
@@ -177,12 +186,21 @@ export const AppDialogs = ({
         key={currentPlanApprovalRequest?.requestId ?? 'plan-idle'}
         isOpen={planApprovalDialogOpen}
         request={currentPlanApprovalRequest}
-        onApprove={(requestId, targetMode) => {
+        initialMode={currentPermissionMode}
+        contextUsage={contextUsage}
+        allowNewChat={onPlanApprovalNewChat !== undefined}
+        onApprove={(requestId, targetMode, options) => {
+          const plan = currentPlanApprovalRequest?.plan ?? '';
+          if (options?.newChat && onPlanApprovalNewChat && plan.trim()) {
+            // The old turn is told "no" (it ends); the approved plan then runs in a fresh chat.
+            handlePlanApprovalReject(requestId);
+            onPlanApprovalNewChat(plan, targetMode);
+            return;
+          }
           handlePlanApprovalApprove(requestId, targetMode);
           onPlanApprovalModeChange?.(targetMode);
         }}
         onReject={handlePlanApprovalReject}
-        timeoutSeconds={permissionDialogTimeoutSeconds}
       />
       <RewindSelectDialog
         isOpen={rewindSelectDialogOpen}

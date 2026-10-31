@@ -47,6 +47,13 @@ import YiMono from '@lobehub/icons/es/Yi/components/Mono';
 import XiaomiMiMoMono from '@lobehub/icons/es/XiaomiMiMo/components/Mono';
 import type { ReactElement } from 'react';
 import { resolveIconVendor, type ModelVendor } from '../../utils/modelIconMapping';
+import {
+  FACTORY_LOGO_BG,
+  FACTORY_LOGO_FG,
+  FACTORY_LOGO_PATH,
+  FACTORY_LOGO_VIEWBOX_CROPPED,
+  FACTORY_LOGO_VIEWBOX_FULL,
+} from './factoryLogo';
 
 export interface ProviderModelIconProps {
   /** Provider type: claude, codex, gemini, etc. */
@@ -158,15 +165,13 @@ const ZcodeIcon = (size: number, colored: boolean): ReactElement => (
 );
 
 /**
- * Droid badge — simple "D" letterform drawn for this project in Factory's
- * orange; mono follows currentColor, colored is white-on-brand.
+ * Droid badge — the official Factory mark. Colored uses the brand tile
+ * (dark square, light mark); mono follows currentColor like the Pi/OMP marks.
  */
-const DROID_BRAND_COLOR = '#EE6018';
-const DROID_D_PATH = 'M18 14h14c11.6 0 19 7.4 19 18s-7.4 18-19 18H18zM26 22v20h6c6.4 0 11-4 11-10s-4.6-10-11-10z';
 const DroidIcon = (size: number, colored: boolean): ReactElement => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 64 64"
+    viewBox={colored ? FACTORY_LOGO_VIEWBOX_FULL : FACTORY_LOGO_VIEWBOX_CROPPED}
     width={size}
     height={size}
     aria-label="Droid"
@@ -174,8 +179,8 @@ const DroidIcon = (size: number, colored: boolean): ReactElement => (
     style={{ flex: 'none', display: 'block' }}
   >
     <title>Droid</title>
-    {colored && <rect width={64} height={64} rx={14} fill={DROID_BRAND_COLOR} />}
-    <path fill={colored ? '#fff' : 'currentColor'} fillRule="evenodd" d={DROID_D_PATH} />
+    {colored && <rect width={508} height={508} rx={72} fill={FACTORY_LOGO_BG} />}
+    <path fill={colored ? FACTORY_LOGO_FG : 'currentColor'} d={FACTORY_LOGO_PATH} />
   </svg>
 );
 

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ModelSelect } from './ModelSelect';
 import { CLAUDE_MODELS, CODEX_MODELS, formatDroidMultiplier } from '../types';
@@ -256,7 +256,7 @@ describe('ModelSelect', () => {
       expect(formatDroidMultiplier(null)).toBe('');
     });
 
-    it('groups rows by vendor in the fixed Droid order and renders rate badges', () => {
+    it('pins Auto and featured models in a header-less top block, then groups by vendor', () => {
       render(
         <ModelSelect value="claude-opus-5-5" onChange={vi.fn()} models={droidCatalog} currentProvider="droid" />,
       );
@@ -264,7 +264,13 @@ describe('ModelSelect', () => {
 
       const groups = Array.from(document.querySelectorAll('[data-testid^="model-group-"]'))
         .map((el) => el.getAttribute('data-testid')!.replace('model-group-', ''));
-      expect(groups).toEqual(['Auto', 'Anthropic', 'OpenAI', 'xAI', 'BYOK']);
+      expect(groups).toEqual(['OpenAI', 'xAI', 'BYOK']);
+
+      const featured = within(screen.getByTestId('model-section-featured'))
+        .getAllByTestId(/^model-option-/)
+        .map((el) => el.getAttribute('data-testid'));
+      expect(featured).toEqual(['model-option-auto-router', 'model-option-claude-opus-5-5']);
+      expect(screen.getByTestId('model-rate-auto-router').textContent).toBe('Dynamic');
 
       expect(screen.getByTestId('model-rate-claude-opus-5-5').textContent).toBe('1.6×');
       expect(screen.getByTestId('model-rate-gpt-6-luna').textContent).toBe('0.04×');
@@ -273,6 +279,27 @@ describe('ModelSelect', () => {
       expect(screen.getByTestId('model-rate-my-byok').textContent).toBe('BYOK');
       // Built description when the payload has none.
       expect(screen.getByTestId('model-option-gpt-6-luna').textContent).toContain('reasoning low–high');
+    });
+
+    it('tucks older generations behind an expandable Legacy row', () => {
+      const catalog: ModelInfo[] = [
+        { id: 'claude-sonnet-5-5', label: 'Sonnet 5.5', group: 'Anthropic', multiplier: 0.8 },
+        { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', group: 'Anthropic', multiplier: 1.2 },
+        { id: 'claude-haiku-4-5', label: 'Haiku 4.5', group: 'Anthropic', multiplier: 0.4 },
+      ];
+      render(
+        <ModelSelect value="claude-sonnet-5-5" onChange={vi.fn()} models={catalog} currentProvider="droid" />,
+      );
+      fireEvent.click(screen.getByRole('button'));
+
+      expect(screen.getByTestId('model-option-claude-sonnet-5-5')).toBeTruthy();
+      expect(screen.queryByTestId('model-option-claude-sonnet-4-6')).toBeNull();
+      expect(screen.getByTestId('model-legacy-toggle').textContent).toBe('Show legacy models (1)');
+
+      fireEvent.click(screen.getByTestId('model-legacy-toggle'));
+      expect(screen.getByTestId('model-option-claude-sonnet-4-6')).toBeTruthy();
+      // The only Haiku is already the newest of its family, so it was never legacy.
+      expect(screen.getByTestId('model-option-claude-haiku-4-5')).toBeTruthy();
     });
 
     it('shows the active rate on the trigger', () => {

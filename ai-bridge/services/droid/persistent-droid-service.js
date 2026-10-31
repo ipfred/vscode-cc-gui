@@ -71,7 +71,10 @@ function buildHandlers(runtime) {
         ...input,
         ...(requestId ? { __bridgeRequestId: requestId } : {}),
       }),
-      requestPlanApproval,
+      requestPlanApproval: (input) => requestPlanApproval(input, {
+        // No time limit: wait until the user answers or the turn ends.
+        isCancelled: () => !runtime.activeTurn || runtime.activeTurn.interrupted === true,
+      }),
     })),
     askUserHandler: (params) => withTurnContext(runtime, async () => {
       const questions = Array.isArray(params?.questions) ? params.questions : [];
@@ -103,7 +106,7 @@ async function openRuntime(params, sessionId = '') {
       const createOptions = {
         transport,
         cwd,
-        interactionMode: mode.interactionMode,
+        interactionMode: params.specMode === true || mode.interactionMode === 'spec' ? 'spec' : 'auto',
         autonomyLevel: mode.autonomyLevel || 'off',
         ...handlers,
       };
@@ -199,7 +202,7 @@ async function acquireRuntime(params) {
  * Bring the live session in line with the requested model / reasoning / mode.
  * Takes effect on the next LLM call; no runtime restart.
  */
-async function applySettings(runtime, { model, reasoningEffort, permissionMode } = {}) {
+async function applySettings(runtime, { model, reasoningEffort, permissionMode, specMode } = {}) {
   const { session } = runtime;
   const current = session.settings || {};
   const update = {};
@@ -216,15 +219,22 @@ async function applySettings(runtime, { model, reasoningEffort, permissionMode }
     if (effort && effort !== current.reasoningEffort) update.reasoningEffort = effort;
   }
 
-  let enterSpec = false;
+  // Spec and the autonomy level are independent: a level change never leaves
+  // Spec, and toggling Spec never touches the level. `wantSpec` stays undefined
+  // (leave as is) unless the caller said otherwise.
+  let wantSpec;
   if (permissionMode !== undefined) {
     const mode = permissionModeToDroid(permissionMode);
-    if (mode.interactionMode === 'spec') {
-      enterSpec = current.interactionMode !== 'spec';
-    } else {
-      if (current.interactionMode === 'spec') update.interactionMode = 'auto';
-      if (mode.autonomyLevel && mode.autonomyLevel !== current.autonomyLevel) update.autonomyLevel = mode.autonomyLevel;
-    }
+    if (mode.autonomyLevel && mode.autonomyLevel !== current.autonomyLevel) update.autonomyLevel = mode.autonomyLevel;
+    if (mode.interactionMode === 'spec') wantSpec = true;
+  }
+  if (typeof specMode === 'boolean') wantSpec = specMode;
+
+  let enterSpec = false;
+  if (wantSpec === true) {
+    enterSpec = current.interactionMode !== 'spec';
+  } else if (wantSpec === false && current.interactionMode === 'spec') {
+    update.interactionMode = 'auto';
   }
 
   if (Object.keys(update).length > 0) {
@@ -305,6 +315,7 @@ export async function sendMessagePersistent(params = {}) {
       model: params.model,
       reasoningEffort: params.reasoningEffort,
       permissionMode: params.permissionMode,
+      specMode: typeof params.specMode === 'boolean' ? params.specMode : undefined,
       ...(runtime.pendingSettings || {}),
     });
     runtime.pendingSettings = null;
@@ -397,13 +408,18 @@ export async function abortCurrentTurn(targetRequestIds) {
 export async function setPermissionModePersistent(params = {}) {
   const sessionId = String(params.sessionId || '').trim();
   const permissionMode = params.permissionMode ?? params.mode;
+  const specMode = typeof params.specMode === 'boolean' ? params.specMode : undefined;
   const runtime = sessionId ? runtimes.get(sessionId) : null;
   if (!runtime) return { applied: false };
   try {
-    await applySettings(runtime, { permissionMode });
+    await applySettings(runtime, { permissionMode, specMode });
     return { applied: true };
   } catch (err) {
-    runtime.pendingSettings = { ...(runtime.pendingSettings || {}), permissionMode };
+    runtime.pendingSettings = {
+      ...(runtime.pendingSettings || {}),
+      permissionMode,
+      ...(specMode !== undefined ? { specMode } : {}),
+    };
     console.error(`[DROID] setPermissionMode failed: ${err.message}`);
     return { applied: false, error: err.message };
   }

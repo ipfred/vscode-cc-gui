@@ -21,7 +21,7 @@ export interface BridgeCallbacks {
   playSound(content: string): void;
   sendToBridge(event: string, content: string, webview: vscode.Webview): void;
   sendDaemonRequest(event: string, method: string, params: Record<string, unknown>, webview: vscode.Webview): void;
-  pushPermissionModeLive(mode: string): void;
+  pushPermissionModeLive(mode: string, specMode?: boolean): void;
   loadHistoryData(provider: string, webview: vscode.Webview): void;
   deepSearchHistory(provider: string, webview: vscode.Webview): void;
   loadSession(sessionId: string, provider: string | undefined, webview: vscode.Webview): void;

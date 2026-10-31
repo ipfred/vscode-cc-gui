@@ -62,7 +62,7 @@ describe('useCliModels (droid)', () => {
     expect(sendBridgeEventMock).toHaveBeenCalledWith('get_cli_models', 'droid:refresh');
   });
 
-  it('re-fetches the catalog when Droid becomes the active provider again', () => {
+  it('does not re-fetch the catalog when Droid becomes the active provider again', () => {
     const { rerender } = renderHook(({ provider }) => useCliModels(provider), { initialProps: { provider: 'droid' } });
     act(() => {
       window.setCliModels?.(JSON.stringify({ success: true, provider: 'droid', models: [OPUS] }));
@@ -70,6 +70,6 @@ describe('useCliModels (droid)', () => {
     rerender({ provider: 'kimi' });
     sendBridgeEventMock.mockClear();
     rerender({ provider: 'droid' });
-    expect(sendBridgeEventMock).toHaveBeenCalledWith('get_cli_models', 'droid:refresh');
+    expect(sendBridgeEventMock).not.toHaveBeenCalledWith('get_cli_models', 'droid:refresh');
   });
 });

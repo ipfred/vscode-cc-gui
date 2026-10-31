@@ -288,7 +288,7 @@ export interface ModelInfo {
   /** Droid: model is listed but cannot be selected (plan/org restriction). */
   disabled?: boolean;
   disabledReason?: string | null;
-  /** Droid: catalog group (Auto / Anthropic / OpenAI / Google / xAI / Factory / BYOK). */
+  /** Droid: catalog group (Auto / Anthropic / OpenAI / Google / xAI / Droid Core / BYOK). */
   group?: string;
   supportedReasoningEfforts?: string[];
   defaultReasoningEffort?: string;
@@ -671,7 +671,7 @@ export const DROID_MODELS: ModelInfo[] = [
 ];
 
 /** Display order of Droid catalog groups in the model dropdown. */
-export const DROID_MODEL_GROUP_ORDER = ['Auto', 'Anthropic', 'OpenAI', 'Google', 'xAI', 'Factory', 'BYOK'] as const;
+export const DROID_MODEL_GROUP_ORDER = ['Auto', 'Anthropic', 'OpenAI', 'Google', 'xAI', 'Droid Core', 'BYOK'] as const;
 
 /**
  * Formats a Factory token-rate multiplier: trailing zeros trimmed, at most
@@ -683,8 +683,12 @@ export function formatDroidMultiplier(multiplier: number | null | undefined): st
   return `${String(rounded)}×`;
 }
 
-/** Droid permission modes in the CLI's Shift+Tab cycle order. */
-export const DROID_MODE_IDS: readonly PermissionMode[] = ['plan', 'default', 'acceptEdits', 'auto', 'bypassPermissions'];
+/**
+ * Droid autonomy levels (Auto Off / Low / Medium / High) in Shift+Tab cycle
+ * order. Spec is a separate toggle that combines with any of them, so `plan`
+ * is not one of these.
+ */
+export const DROID_MODE_IDS: readonly PermissionMode[] = ['default', 'acceptEdits', 'auto', 'bypassPermissions'];
 
 /** i18n key segment under `droidModes.*` for each Droid mode id. */
 export const DROID_MODE_I18N_KEYS: Record<string, string> = {

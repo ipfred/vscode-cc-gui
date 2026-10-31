@@ -36,7 +36,8 @@ export function ompModeForModelId(modelId: string, roles: ModelInfo[]): Permissi
  */
 export function normalizeCliPermissionMode(mode: PermissionMode, provider?: string | null): PermissionMode {
   if (provider === 'droid') {
-    // Droid exposes all five modes (Spec = plan, Auto Off/Low/Medium/High).
+    // Droid exposes the four autonomy levels; Spec is a separate flag, so a
+    // legacy `plan` value falls back to Auto Off.
     const canonical = mode === 'autoEdit' ? 'acceptEdits' : mode;
     return isDroidPermissionMode(canonical) ? canonical : 'default';
   }

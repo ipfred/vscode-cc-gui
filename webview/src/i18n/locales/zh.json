@@ -1226,7 +1226,22 @@
     "reject": "拒绝",
     "toApprove": "批准",
     "toReject": "拒绝",
-    "timeoutWarning": "请尽快做出选择，对话框将在 {{seconds}} 秒后自动关闭"
+    "timeoutWarning": "请尽快做出选择，对话框将在 {{seconds}} 秒后自动关闭",
+    "tab": "计划",
+    "planFallbackTitle": "Spec",
+    "openInEditor": "在 VS Code 编辑器中打开",
+    "emptyPlan": "计划没有可预览的内容。",
+    "autonomy": "自主程度",
+    "autonomyTooltip": "{{level}}，点击切换无需询问即可执行的范围",
+    "keepIterating": "继续迭代",
+    "approveSpec": "批准 Spec",
+    "thisChat": "当前会话",
+    "thisChatDesc": "保留当前对话继续执行",
+    "newChat": "新会话",
+    "newChatDesc": "仅带着已批准的 Spec 全新开始",
+    "contextUsed": "已用 {{percent}}% 上下文",
+    "contextUsedTokens": "已用 {{used}} / {{max}}（{{percent}}%）",
+    "contextSavings": "（节省 {{percent}}% 上下文）"
   },
   "toast": {
     "switchSuccess": "切换成功",

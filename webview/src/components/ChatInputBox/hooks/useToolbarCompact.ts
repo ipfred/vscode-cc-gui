@@ -40,7 +40,14 @@ export function useToolbarCompact(areaRef: RefObject<HTMLDivElement | null>): bo
     const wasCompact = compactRef.current;
     if (wasCompact) area.classList.remove('toolbar-compact');
     const naturalWidth = left.scrollWidth;
-    if (wasCompact) area.classList.add('toolbar-compact');
+    if (wasCompact) {
+      area.classList.add('toolbar-compact');
+      // Flush styles while transitions are still disabled. Otherwise the style
+      // computed above (labels expanded) becomes the transition's start value
+      // once `toolbar-measuring` is removed, and the labels flash on every
+      // measurement.
+      void left.scrollWidth;
+    }
     area.classList.remove('toolbar-measuring');
     const shouldCompact = naturalWidth > available;
     if (shouldCompact !== compactRef.current) {

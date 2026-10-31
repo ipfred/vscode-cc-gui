@@ -101,6 +101,7 @@ export const ModelSelect = ({
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showLegacy, setShowLegacy] = useState(false);
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -173,13 +174,20 @@ export const ModelSelect = ({
         return [model.id, label, description].some((value) => value.toLowerCase().includes(normalizedSearchQuery));
       })
     : models;
-  const { sections, hiddenCount: hiddenModelCount } = isDroid
-    ? buildDroidModelSections(filteredModels, MAX_VISIBLE_MODEL_OPTIONS)
-    : buildModelDropdownSections(filteredModels, {
+  const droidBuilt = isDroid
+    ? buildDroidModelSections(filteredModels, MAX_VISIBLE_MODEL_OPTIONS, {
+        searching: normalizedSearchQuery.length > 0,
+        selectedId: strippedValue,
+      })
+    : null;
+  const { sections, hiddenCount: hiddenModelCount } = droidBuilt
+    ?? buildModelDropdownSections(filteredModels, {
         visibleLimit: MAX_VISIBLE_MODEL_OPTIONS,
       });
+  const legacyModels = droidBuilt?.legacy ?? [];
   const visibleModelCount = sections.reduce((n, s) => n + s.models.length, 0);
   const showSearch = shouldShowModelSearch(models.length, searchQuery);
+  const showRefresh = isDroid && !!onRefresh;
 
   /**
    * Toggle dropdown
@@ -192,6 +200,7 @@ export const ModelSelect = ({
       setSearchQuery('');
     }
     if (nextOpen) {
+      setShowLegacy(false);
       recalculate();
     }
   }, [isOpen, recalculate]);
@@ -259,6 +268,49 @@ export const ModelSelect = ({
         overflowY: 'auto',
       };
 
+  const renderModelRow = (model: ModelInfo) => {
+    const rowDisabled = isDroid && model.disabled === true;
+    const rateBadge = isDroid ? droidModelRateLabel(model, t) : '';
+    const description = getModelDescription(model);
+    return (
+      <div
+        key={model.id}
+        className={`selector-option ${isSelectedModel(model.id) ? 'selected' : ''}${rowDisabled ? ' disabled' : ''}`}
+        onClick={() => handleSelect(model.id, rowDisabled)}
+        data-testid={`model-option-${model.id}`}
+        aria-disabled={rowDisabled || undefined}
+        title={rowDisabled ? description : undefined}
+        style={rowDisabled ? DISABLED_OPTION_STYLE : undefined}
+      >
+        <ProviderModelIcon
+          providerId={currentProvider}
+          modelId={resolveModelIdForIcon(model.id, currentProvider === 'claude' ? modelMapping : {}, MODEL_ID_TO_MAPPING_KEY)}
+          size={16}
+          colored
+        />
+        <div style={MODEL_OPTION_INFO_STYLE}>
+          <span style={MODEL_LABEL_ROW_STYLE}>
+            <span style={MODEL_TEXT_STYLE}>{getModelLabel(model, false)}</span>
+            {rateBadge && (
+              <span
+                className={`model-rate-badge${isDroidByokModel(model) ? ' model-rate-badge-byok' : ''}`}
+                data-testid={`model-rate-${model.id}`}
+              >
+                {rateBadge}
+              </span>
+            )}
+          </span>
+          {description && (
+            <span className="model-description" style={MODEL_TEXT_STYLE}>{description}</span>
+          )}
+        </div>
+        {isSelectedModel(model.id) && (
+          <span className="codicon codicon-check check-mark" />
+        )}
+      </div>
+    );
+  };
+
   const renderDropdown = () => (
         <div
           ref={dropdownRef}
@@ -267,7 +319,7 @@ export const ModelSelect = ({
           style={inline ? undefined : dropdownStyle}
           onMouseEnter={(e) => e.stopPropagation()}
         >
-          {showSearch && (
+          {(showSearch || showRefresh) && (
             <div className="selector-search-row">
               <input
                 className="selector-search-input"
@@ -277,6 +329,22 @@ export const ModelSelect = ({
                 placeholder={t('models.searchPlaceholder', { defaultValue: 'Search models' })}
                 autoFocus
               />
+              {showRefresh && (
+                <button
+                  type="button"
+                  className="selector-search-refresh"
+                  data-testid="model-refresh"
+                  title={t('droid.refreshModels', { defaultValue: 'Refresh models' })}
+                  aria-label={t('droid.refreshModels', { defaultValue: 'Refresh models' })}
+                  disabled={loading}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onRefresh?.();
+                  }}
+                >
+                  <span className={`codicon codicon-refresh${loading ? ' codicon-modifier-spin' : ''}`} />
+                </button>
+              )}
             </div>
           )}
           {loading && (
@@ -312,50 +380,45 @@ export const ModelSelect = ({
                   <span>{section.label}</span>
                 </div>
               )}
-              {section.models.map((model) => {
-                const rowDisabled = isDroid && model.disabled === true;
-                const rateBadge = isDroid ? droidModelRateLabel(model, t) : '';
-                const description = getModelDescription(model);
-                return (
-                <div
-                  key={model.id}
-                  className={`selector-option ${isSelectedModel(model.id) ? 'selected' : ''}${rowDisabled ? ' disabled' : ''}`}
-                  onClick={() => handleSelect(model.id, rowDisabled)}
-                  data-testid={`model-option-${model.id}`}
-                  aria-disabled={rowDisabled || undefined}
-                  title={rowDisabled ? description : undefined}
-                  style={rowDisabled ? DISABLED_OPTION_STYLE : undefined}
-                >
-                  <ProviderModelIcon
-                    providerId={currentProvider}
-                    modelId={resolveModelIdForIcon(model.id, currentProvider === 'claude' ? modelMapping : {}, MODEL_ID_TO_MAPPING_KEY)}
-                    size={16}
-                    colored
-                  />
-                  <div style={MODEL_OPTION_INFO_STYLE}>
-                    <span style={MODEL_LABEL_ROW_STYLE}>
-                      <span style={MODEL_TEXT_STYLE}>{getModelLabel(model, false)}</span>
-                      {rateBadge && (
-                        <span
-                          className={`model-rate-badge${isDroidByokModel(model) ? ' model-rate-badge-byok' : ''}`}
-                          data-testid={`model-rate-${model.id}`}
-                        >
-                          {rateBadge}
-                        </span>
-                      )}
-                    </span>
-                    {description && (
-                      <span className="model-description" style={MODEL_TEXT_STYLE}>{description}</span>
-                    )}
-                  </div>
-                  {isSelectedModel(model.id) && (
-                    <span className="codicon codicon-check check-mark" />
-                  )}
-                </div>
-                );
-              })}
+              {section.models.map(renderModelRow)}
             </div>
           ))}
+          {legacyModels.length > 0 && (
+            <div className="model-selector-section" data-testid="model-section-legacy">
+              <div className="model-selector-group-header" data-testid="model-group-legacy">
+                <span>{t('droid.legacyGroup', { defaultValue: 'Legacy' })}</span>
+              </div>
+              {showLegacy ? (
+                <>
+                  {legacyModels.map(renderModelRow)}
+                  <div
+                    className="selector-option selector-option-status"
+                    data-testid="model-legacy-toggle"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setShowLegacy(false);
+                    }}
+                  >
+                    {t('droid.hideLegacyModels', { defaultValue: 'Hide legacy models' })}
+                  </div>
+                </>
+              ) : (
+                <div
+                  className="selector-option selector-option-status"
+                  data-testid="model-legacy-toggle"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowLegacy(true);
+                  }}
+                >
+                  {t('droid.showLegacyModels', {
+                    count: legacyModels.length,
+                    defaultValue: `Show legacy models (${legacyModels.length})`,
+                  })}
+                </div>
+              )}
+            </div>
+          )}
           {visibleModelCount === 0 && (
             <div className="selector-option selector-option-status">
               {t('models.noModelsFound', { defaultValue: 'No models found' })}
@@ -368,24 +431,6 @@ export const ModelSelect = ({
                 defaultValue: `+ ${hiddenModelCount} more models. Type to search.`,
               })}
             </div>
-          )}
-          {isDroid && onRefresh && (
-            <>
-              <div className="selector-divider" />
-              <div
-                className="selector-option selector-option-status"
-                data-testid="model-refresh"
-                style={{ ...LOADING_OPTION_STYLE, cursor: loading ? 'default' : 'pointer' }}
-                title={t('droid.refreshModels', { defaultValue: 'Refresh models' })}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (!loading) onRefresh();
-                }}
-              >
-                <span className={`codicon codicon-refresh${loading ? ' codicon-modifier-spin' : ''}`} />
-                <span>{t('droid.refreshModels', { defaultValue: 'Refresh models' })}</span>
-              </div>
-            </>
           )}
           {!hideLongContextToggle && currentProvider === 'claude' && onLongContextChange && (
             <>

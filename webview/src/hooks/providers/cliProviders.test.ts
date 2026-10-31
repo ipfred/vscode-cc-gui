@@ -21,10 +21,11 @@ describe('normalizeCliPermissionMode', () => {
     }
   });
 
-  it('keeps all five Droid modes (Spec / Auto Off–High) and drops unknown ids', () => {
-    for (const mode of ['plan', 'default', 'acceptEdits', 'auto', 'bypassPermissions']) {
+  it('keeps the four Droid autonomy levels and drops unknown ids (Spec is a separate flag)', () => {
+    for (const mode of ['default', 'acceptEdits', 'auto', 'bypassPermissions']) {
       expect(normalizeCliPermissionMode(mode, 'droid')).toBe(mode);
     }
+    expect(normalizeCliPermissionMode('plan', 'droid')).toBe('default');
     expect(normalizeCliPermissionMode('autoEdit', 'droid')).toBe('acceptEdits');
     expect(normalizeCliPermissionMode('smol', 'droid')).toBe('default');
   });

@@ -71,8 +71,8 @@ describe('createDroidSettingsHandler', () => {
 
   it('only mirrors the active permission mode while Droid is the current provider', () => {
     const { deps, handler } = setup('claude-opus-5-5', 'claude');
-    handler({ interactionMode: 'spec', autonomyLevel: 'off' });
-    expect(deps.setDroidPermissionMode).toHaveBeenCalledWith('plan');
+    handler({ interactionMode: 'spec', autonomyLevel: 'high' });
+    expect(deps.setDroidPermissionMode).toHaveBeenCalledWith('bypassPermissions');
     expect(deps.setPermissionMode).not.toHaveBeenCalled();
   });
 
@@ -90,7 +90,9 @@ describe('resolveDroidPermissionMode', () => {
     expect(resolveDroidPermissionMode({ permissionMode: 'bypassPermissions', autonomyLevel: 'off' })).toBe('bypassPermissions');
     expect(resolveDroidPermissionMode({ interactionMode: 'auto', autonomyLevel: 'medium' })).toBe('auto');
     expect(resolveDroidPermissionMode({ interactionMode: 'auto', autonomyLevel: 'low' })).toBe('acceptEdits');
-    expect(resolveDroidPermissionMode({ interactionMode: 'spec' })).toBe('plan');
+    // Spec is a separate flag, not an autonomy level.
+    expect(resolveDroidPermissionMode({ interactionMode: 'spec' })).toBeNull();
+    expect(resolveDroidPermissionMode({ interactionMode: 'spec', autonomyLevel: 'low' })).toBe('acceptEdits');
     expect(resolveDroidPermissionMode({})).toBeNull();
   });
 });
@@ -98,5 +100,18 @@ describe('resolveDroidPermissionMode', () => {
 describe('buildDroidModelSwitchedNotice', () => {
   it('falls back to the raw id without a rate for unknown models', () => {
     expect(buildDroidModelSwitchedNotice('mystery', MODELS, t)).toBe('Model switched to mystery');
+  });
+});
+
+describe('Spec mode sync', () => {
+  it('mirrors interactionMode into the Spec flag independently of the autonomy level', async () => {
+    const { getDroidSpecMode, setDroidSpecMode } = await import('./droidSpecMode');
+    const { deps, handler } = setup();
+    handler({ interactionMode: 'spec', autonomyLevel: 'medium' });
+    expect(getDroidSpecMode()).toBe(true);
+    expect(deps.setDroidPermissionMode).toHaveBeenCalledWith('auto');
+    handler({ interactionMode: 'auto', autonomyLevel: 'medium' });
+    expect(getDroidSpecMode()).toBe(false);
+    setDroidSpecMode(false);
   });
 });

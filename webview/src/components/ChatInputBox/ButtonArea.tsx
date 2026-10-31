@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ButtonAreaProps, CodexFastMode, ModelInfo, PermissionMode, ReasoningEffort } from './types';
 import { ConfigSelect, DshPresetSelect, ModeSelect, ModelConfigSelect, ProviderSelect } from './selectors';
+import { DroidSpecToggle } from './selectors/DroidSpecToggle';
 import { CLAUDE_MODELS, CODEX_MODELS, DEFAULT_CLAUDE_MODEL_ID, GROK_MODELS, OMP_DEFAULT_MODEL_ID, OMP_MODELS, OMP_ROLE_MODELS } from './types';
 import { STORAGE_KEYS, validateCodexCustomModels } from '../../types/provider';
 import type { CodexCustomModel } from '../../types/provider';
@@ -352,6 +353,7 @@ export const ButtonArea = ({
           onOpenCliSettings={onOpenCliSettings}
           compact
         />
+        {currentProvider === 'droid' && <DroidSpecToggle permissionMode={permissionMode} />}
         <ModeSelect
           value={permissionMode}
           onChange={handleModeSelect}

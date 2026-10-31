@@ -270,13 +270,17 @@ export class SettingsHandler implements BridgeHandler {
         // value to the same effective mode (upstream ae562df8/1bd55ef1):
         // legacy autoEdit → acceptEdits (omp → default), native auto only for
         // claude/codex — headless CLI providers degrade to default.
-        const parsed = parseJson<{ mode?: string } | null>(content, null);
+        const parsed = parseJson<{ mode?: string; spec?: boolean } | null>(content, null);
         const effectiveMode = this.normalizeModeForCurrentProvider(parsed?.mode ?? content);
         await this.store.setPermissionMode(effectiveMode);
         postRaw(webview, 'mode_received', effectiveMode);
         // Hot-swap on the live Claude runtime so the next tool call in the
-        // current turn honors the new mode (v0.4.6 parity).
-        this.context.callbacks.pushPermissionModeLive(effectiveMode);
+        // current turn honors the new mode (v0.4.6 parity). `spec` is only
+        // sent by Droid, where Spec is independent of the autonomy level.
+        this.context.callbacks.pushPermissionModeLive(
+          effectiveMode,
+          typeof parsed?.spec === 'boolean' ? parsed.spec : undefined,
+        );
         return true;
 
       case 'get_commit_prompt':

@@ -1,8 +1,9 @@
 /**
  * CC GUI permission mode ↔ Droid interaction mode + autonomy level.
  *
- * Mirrors the CLI's Shift+Tab cycle: Spec → Auto Off → Low → Medium → High.
- * The webview reuses its existing mode ids for these five states.
+ * The four webview mode ids map to Auto Off / Low / Medium / High. Spec is an
+ * independent interaction-mode flag that combines with any of them; the legacy
+ * `plan` id still means "enter Spec, keep the current autonomy level".
  */
 
 const MODE_TO_DROID = {
@@ -31,10 +32,12 @@ export function permissionModeToDroid(permissionMode) {
   return MODE_TO_DROID[key] || MODE_TO_DROID.default;
 }
 
-/** Droid session settings → CC GUI mode id. */
+/**
+ * Droid session settings → CC GUI mode id. Spec is a separate axis
+ * (`interactionMode`), so this only reflects the autonomy level.
+ */
 export function droidToPermissionMode(settings) {
   const s = settings && typeof settings === 'object' ? settings : {};
-  if (s.interactionMode === 'spec') return 'plan';
   return AUTONOMY_TO_MODE[s.autonomyLevel] || 'default';
 }
 

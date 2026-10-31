@@ -23,7 +23,7 @@ test('multipliers format like the CLI', () => {
 });
 
 test('models group by provider, with Auto and BYOK groups', () => {
-  assert.deepEqual(RAW.map(modelGroup), ['Auto', 'Anthropic', 'Anthropic', 'OpenAI', 'Google', 'xAI', 'Factory', 'BYOK', 'OpenAI']);
+  assert.deepEqual(RAW.map(modelGroup), ['Auto', 'Anthropic', 'Anthropic', 'OpenAI', 'Google', 'xAI', 'Droid Core', 'BYOK', 'OpenAI']);
 });
 
 test('catalog keeps multiplier, reasoning and availability fields', () => {

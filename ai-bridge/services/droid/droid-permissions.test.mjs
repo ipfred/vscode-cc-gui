@@ -88,6 +88,22 @@ test('spec exit goes through plan approval and maps the chosen autonomy', async 
   assert.ok(!planApprovalOutcomes('auto').some((o) => o.startsWith('proceed_new_session')));
 });
 
+test('spec exit forwards the title and context savings to the dialog', async () => {
+  let seen = null;
+  await resolveDroidPermission({
+    toolUses: [{ confirmationType: 'exit_spec_mode', details: { type: 'exit_spec_mode', plan: 'p', title: 'Add auth', contextSavingsPercent: 62 } }],
+    options: [{ value: 'proceed_once' }, { value: 'cancel' }],
+  }, { requestPermission: async () => true, requestPlanApproval: async (input) => { seen = input; return { approved: false }; } });
+  assert.deepEqual(seen, { plan: 'p', title: 'Add auth', contextSavingsPercent: 62 });
+
+  seen = null;
+  await resolveDroidPermission({
+    toolUses: [{ confirmationType: 'exit_spec_mode', details: { type: 'exit_spec_mode', plan: 'p' } }],
+    options: [{ value: 'cancel' }],
+  }, { requestPermission: async () => true, requestPlanApproval: async (input) => { seen = input; return { approved: false }; } });
+  assert.deepEqual(seen, { plan: 'p' });
+});
+
 test('spec exit falls back to proceed_once when the auto-run outcome is not offered', async () => {
   const outcome = await resolveDroidPermission({
     toolUses: [{ confirmationType: 'exit_spec_mode', details: { type: 'exit_spec_mode', plan: 'p' } }],
@@ -126,9 +142,8 @@ test('ask-user questions and answers round-trip', () => {
   assert.deepEqual(toAskUserResult(questions, {}), { cancelled: true, answers: [] });
 });
 
-test('CC GUI modes map to the CLI Shift+Tab cycle and back', () => {
+test('CC GUI autonomy modes map to the CLI levels and back; Spec is independent', () => {
   const cases = [
-    ['plan', { interactionMode: 'spec', autonomyLevel: null }, { interactionMode: 'spec', autonomyLevel: 'off' }],
     ['default', { interactionMode: 'auto', autonomyLevel: 'off' }, { interactionMode: 'auto', autonomyLevel: 'off' }],
     ['acceptEdits', { interactionMode: 'auto', autonomyLevel: 'low' }, { interactionMode: 'auto', autonomyLevel: 'low' }],
     ['auto', { interactionMode: 'auto', autonomyLevel: 'medium' }, { interactionMode: 'auto', autonomyLevel: 'medium' }],
@@ -138,6 +153,11 @@ test('CC GUI modes map to the CLI Shift+Tab cycle and back', () => {
     assert.deepEqual(permissionModeToDroid(mode), expected, mode);
     assert.equal(droidToPermissionMode(settings), mode, mode);
   }
+  // Legacy `plan` still means "enter Spec", but keeps the current autonomy level.
+  assert.deepEqual(permissionModeToDroid('plan'), { interactionMode: 'spec', autonomyLevel: null });
+  // Spec never changes the reported autonomy level.
+  assert.equal(droidToPermissionMode({ interactionMode: 'spec', autonomyLevel: 'low' }), 'acceptEdits');
+  assert.equal(droidToPermissionMode({ interactionMode: 'spec', autonomyLevel: 'high' }), 'bypassPermissions');
   assert.deepEqual(permissionModeToDroid('autoEdit'), { interactionMode: 'auto', autonomyLevel: 'low' });
   assert.deepEqual(permissionModeToDroid(undefined), { interactionMode: 'auto', autonomyLevel: 'off' });
 });

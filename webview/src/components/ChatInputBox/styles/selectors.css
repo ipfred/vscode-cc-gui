@@ -74,6 +74,12 @@
   text-overflow: ellipsis;
 }
 
+/* Droid Spec toggle: highlighted while Spec is on */
+.selector-button.droid-spec-toggle.active {
+  color: var(--vscode-textLink-foreground, #3794ff);
+  background: var(--button-hover);
+}
+
 /* Full Auto (bypassPermissions) - subtle orange warning indicator */
 .selector-button.mode-full-auto-active {
   color: #cc8400;
@@ -185,6 +191,62 @@
 .selector-dropdown.model-selector-dropdown,
 .selector-dropdown.runtime-provider-dropdown {
   box-sizing: border-box;
+}
+
+/* Model dropdown: search box + (Droid) manual refresh button */
+.selector-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 4px;
+}
+
+.selector-search-input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--dropdown-border);
+  border-radius: 4px;
+  outline: none;
+}
+
+.selector-search-input::placeholder {
+  color: var(--input-placeholder);
+}
+
+.selector-search-input:focus {
+  border-color: var(--input-focus-border);
+}
+
+.selector-search-refresh {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.selector-search-refresh:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--button-hover);
+}
+
+.selector-search-refresh:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* Model dropdown: provider group headers (OMP/OpenCode long catalogs) */

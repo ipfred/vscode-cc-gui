@@ -10,6 +10,7 @@ import type { Attachment, ChatInputBoxHandle, PermissionMode, ReasoningEffort, S
 import type { ViewMode } from './useModelProviderState';
 import { isCliOnlyProvider } from './providers/cliProviders';
 import { getCachedCliModels } from './providers/useCliModels';
+import { getDroidSpecMode } from './providers/droidSpecMode';
 
 /**
  * Command sets for local handling (shared with App.tsx to avoid duplication)
@@ -360,6 +361,7 @@ export function useMessageSender({
           ...reasoningEffortPayload,
           ...contextBarPayload,
           ...(currentProvider === 'dsh' ? { dshPreset: dshPreset || '' } : {}),
+          ...(currentProvider === 'droid' ? { specMode: getDroidSpecMode() } : {}),
           codexFastMode,
         });
         sendBridgeEvent('send_message_with_attachments', payload);
@@ -376,6 +378,7 @@ export function useMessageSender({
           ...reasoningEffortPayload,
           ...contextBarPayload,
           ...(currentProvider === 'dsh' ? { dshPreset: dshPreset || '' } : {}),
+          ...(currentProvider === 'droid' ? { specMode: getDroidSpecMode() } : {}),
           codexFastMode,
         });
         sendBridgeEvent('send_message', fallbackPayload);
@@ -392,6 +395,7 @@ export function useMessageSender({
         ...reasoningEffortPayload,
         ...contextBarPayload,
         ...(currentProvider === 'dsh' ? { dshPreset: dshPreset || '' } : {}),
+          ...(currentProvider === 'droid' ? { specMode: getDroidSpecMode() } : {}),
         codexFastMode,
       });
       sendBridgeEvent('send_message', payload);

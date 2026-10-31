@@ -9,6 +9,7 @@ import { droidModelRateLabel } from '../../components/ChatInputBox/droidModelUti
 import type { ModelInfo, PermissionMode, ReasoningEffort } from '../../components/ChatInputBox/types';
 import { addLocalNotice } from '../../utils/localNotices';
 import { getCachedCliModels } from './useCliModels';
+import { setDroidSpecMode } from './droidSpecMode';
 
 /** Payload of `window.onDroidSettingsUpdated` (Droid CLI `settings_updated`). */
 export interface DroidSettingsPayload {
@@ -27,14 +28,12 @@ const AUTONOMY_TO_MODE: Record<string, PermissionMode> = {
 };
 
 /**
- * Resolves the webview mode id from a settings payload. `permissionMode` is
- * authoritative; interactionMode/autonomyLevel are a fallback for payloads
- * that only carry the CLI-native fields.
+ * Resolves the webview autonomy-level id from a settings payload.
+ * `permissionMode` is authoritative; autonomyLevel is a fallback for payloads
+ * that only carry the CLI-native fields. Spec is tracked separately.
  */
 export function resolveDroidPermissionMode(payload: DroidSettingsPayload): PermissionMode | null {
   if (isDroidPermissionMode(payload.permissionMode)) return payload.permissionMode;
-  const interaction = payload.interactionMode?.toLowerCase();
-  if (interaction === 'spec' || interaction === 'plan') return 'plan';
   const autonomy = payload.autonomyLevel?.toLowerCase();
   if (autonomy && AUTONOMY_TO_MODE[autonomy]) return AUTONOMY_TO_MODE[autonomy];
   return null;
@@ -98,6 +97,11 @@ export function createDroidSettingsHandler(deps: DroidSettingsHandlerDeps) {
 
     if (isDroidReasoningEffort(payload.reasoningEffort)) {
       deps.setDroidReasoningEffort(payload.reasoningEffort);
+    }
+
+    if (typeof payload.interactionMode === 'string' && payload.interactionMode) {
+      const interaction = payload.interactionMode.toLowerCase();
+      setDroidSpecMode(interaction === 'spec' || interaction === 'plan');
     }
 
     const mode = resolveDroidPermissionMode(payload);

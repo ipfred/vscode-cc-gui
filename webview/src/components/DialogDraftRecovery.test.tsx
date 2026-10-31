@@ -53,13 +53,18 @@ describe('dialog draft recovery', () => {
   it('does not carry a previously selected bypass mode into a new plan', () => {
     const props = { isOpen: true, request, onApprove: vi.fn(), onReject: noop };
     const first = render(<PlanApprovalDialog {...props} />);
-    fireEvent.click(screen.getByRole('button', { name: 'bypassPermissions' }));
+    const cycle = () => screen.getByTestId('plan-autonomy');
+    fireEvent.click(cycle());
+    fireEvent.click(cycle());
+    fireEvent.click(cycle());
+    expect(cycle().getAttribute('aria-label')).toBe('Autonomy: Auto (High)');
     first.unmount();
     const second = render(<PlanApprovalDialog {...props} />);
-    expect(screen.getByRole('button', { name: 'bypassPermissions' }).classList.contains('selected')).toBe(true);
+    expect(cycle().getAttribute('aria-label')).toBe('Autonomy: Auto (High)');
     second.rerender(<PlanApprovalDialog {...props} request={{ ...request, dialogToken: 'new' }} />);
-    fireEvent.click(screen.getByRole('button', { name: '批准并执行' }));
-    expect(props.onApprove).toHaveBeenCalledWith('C', 'default');
+    expect(cycle().getAttribute('aria-label')).toBe('Autonomy: Auto (Off)');
+    fireEvent.click(screen.getByTestId('plan-approve'));
+    expect(props.onApprove.mock.calls[0].slice(0, 2)).toEqual(['C', 'default']);
     expect(readDialogDraft('planApproval', 'C', 30_000, 'new')).toBeNull();
   });
 

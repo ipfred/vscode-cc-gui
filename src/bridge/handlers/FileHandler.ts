@@ -1,4 +1,6 @@
+import { createHash } from 'crypto';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { BridgeContext, BridgeHandler, BridgeMessage } from '../types';
@@ -17,6 +19,7 @@ export class FileHandler implements BridgeHandler {
     'resolve_drop_paths',
     'get_linkify_capabilities',
     'open_class',
+    'open_plan_document',
   ] as const;
 
   constructor(private readonly context: BridgeContext) {}
@@ -75,6 +78,9 @@ export class FileHandler implements BridgeHandler {
       case 'open_class':
         await this.openClass(content);
         return true;
+      case 'open_plan_document':
+        await this.openPlanDocument(content, webview);
+        return true;
       default:
         return false;
     }
@@ -91,6 +97,35 @@ export class FileHandler implements BridgeHandler {
       const pos = new vscode.Position(Math.max(0, Number(line) - 1), 0);
       editor.selection = new vscode.Selection(pos, pos);
       editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+    }
+  }
+
+  /**
+   * Writes a Spec plan to a temp markdown file and opens it in an editor tab
+   * with a rendered preview beside it. The file name is stable per plan text, so
+   * reopening the same plan reuses the same tab.
+   */
+  private async openPlanDocument(content: string, webview: vscode.Webview): Promise<void> {
+    try {
+      const payload = parseJson<{ title?: string; plan?: string }>(content, {});
+      const plan = String(payload.plan ?? '');
+      if (!plan.trim()) return;
+      const slug = String(payload.title ?? 'spec')
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 48) || 'spec';
+      const hash = createHash('sha1').update(plan).digest('hex').slice(0, 8);
+      const dir = path.join(os.tmpdir(), 'ccg-specs');
+      fs.mkdirSync(dir, { recursive: true });
+      const file = path.join(dir, `${slug}-${hash}.md`);
+      fs.writeFileSync(file, plan, 'utf8');
+      const uri = vscode.Uri.file(file);
+      const doc = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(doc, { preview: false, viewColumn: vscode.ViewColumn.Active });
+      await vscode.commands.executeCommand('markdown.showPreviewToSide', uri);
+    } catch (error) {
+      this.addToast(webview, error instanceof Error ? error.message : String(error), 'error');
     }
   }
 

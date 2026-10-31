@@ -619,6 +619,8 @@ export class PermissionIpcService implements vscode.Disposable {
         requestId?: string;
         toolName?: string;
         plan?: string;
+        title?: string;
+        contextSavingsPercent?: number;
         allowedPrompts?: unknown[];
         timestamp?: string;
         bridgeRequestId?: string;
@@ -658,9 +660,11 @@ export class PermissionIpcService implements vscode.Disposable {
         requestId,
         toolName: data?.toolName ?? 'ExitPlanMode',
         plan: data?.plan ?? '',
+        title: data?.title,
+        contextSavingsPercent: data?.contextSavingsPercent,
         allowedPrompts: data?.allowedPrompts ?? [],
         timestamp: data?.timestamp,
-        deadlineMs: this.dialogDeadlineMs(),
+        // No deadlineMs: a plan can be reviewed for as long as needed.
         dialogToken,
       });
       this.pendingShows.set(PermissionIpcService.pendingShowKey('planApproval', requestId), {
