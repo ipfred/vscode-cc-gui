@@ -20,6 +20,7 @@ import { createDroidTransport, readDefaultDroidModelId } from './droid-runtime.j
 import { DroidEventNormalizer, tokenUsageToSnake } from './droid-event-normalizer.js';
 import { permissionModeToDroid, settingsToUiPayload } from './droid-modes.js';
 import { resolveDroidPermission, toAskUserResult, toDialogQuestions } from './droid-permissions.js';
+import { createContextUsageReporter } from './droid-context-usage.js';
 import { findCachedModel, formatMultiplier, getRawCatalog, mapModelCatalog, resolveReasoningEffort } from './models-service.js';
 import { deleteSession as deleteSessionFiles, listUserPrompts } from './history-service.js';
 import { buildDroidCommandList } from './commands-service.js';
@@ -346,6 +347,9 @@ export async function sendMessagePersistent(params = {}) {
     console.error(`[DROID] settings subscription failed: ${err.message}`);
   }
 
+  const contextUsage = createContextUsageReporter(session, (line) => console.log(line));
+  void contextUsage.flush();
+
   let outcome = null;
   try {
     const images = mapImages(params.attachments);
@@ -370,6 +374,8 @@ export async function sendMessagePersistent(params = {}) {
     }
   } finally {
     unsubscribeSettings();
+    await contextUsage.flush();
+    contextUsage.stop();
     runtime.activeTurn = null;
     runtime.lastUsedAt = Date.now();
     if (requestId) activeTurns.delete(requestId);

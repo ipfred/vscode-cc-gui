@@ -1866,8 +1866,17 @@ export class BridgeServer {
             cacheWrite,
           }, { avoidDailyDoubleCount: true });
           this._lastUsage.set(msg.id, { inputTokens, outputTokens, cacheRead, cacheWrite, cost, model, sessionId });
-          this._usageStatistics.postUsageUpdate(webview, inputTokens);
+          // Droid's turn total omits cache reads and spans every model call, so it
+          // would overwrite the live [CONTEXT_USAGE] reading with a tiny number.
+          if (this._activeProvider !== 'droid') {
+            this._usageStatistics.postUsageUpdate(webview, inputTokens);
+          }
         } catch { /* ignore */ }
+      } else if (line.startsWith('[CONTEXT_USAGE] ')) {
+        const usage = this._safeJson<{ used?: number; limit?: number } | null>(line.slice('[CONTEXT_USAGE] '.length), null);
+        if (usage && Number.isFinite(usage.used) && Number.isFinite(usage.limit) && (usage.limit as number) > 0) {
+          this._usageStatistics.postUsageUpdate(webview, usage.used as number, { maxTokens: usage.limit as number });
+        }
       } else if (!line.startsWith('[')) {
         // Daemon request-result envelopes (no protocol tag) must never become chat text.
         // Codex/Claude print e.g. {"success":true,"threadId":"...","result":"3","transport":"app-server"}
